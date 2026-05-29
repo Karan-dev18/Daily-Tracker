@@ -1,0 +1,356 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────
+   Pink Theme Design Tokens
+   ───────────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Pink palette */
+  --color-pink-50: #fdf2f8;
+  --color-pink-100: #fce7f3;
+  --color-pink-200: #fbcfe8;
+  --color-pink-300: #f9a8d4;
+  --color-pink-400: #f472b6;
+  --color-pink-500: #ec4899;
+  --color-pink-600: #db2777;
+  --color-pink-700: #be185d;
+
+  /* Rose accent */
+  --color-rose-50: #fff1f2;
+  --color-rose-100: #ffe4e6;
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+
+  /* Fuchsia accent */
+  --color-fuchsia-50: #fdf4ff;
+  --color-fuchsia-100: #fae8ff;
+  --color-fuchsia-400: #e879f9;
+  --color-fuchsia-500: #d946ef;
+}
+
+:root {
+  --background: #fdf2f8;
+  --foreground: #4a1942;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Animated Background
+   ───────────────────────────────────────────────────────── */
+
+.bg-mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(251, 207, 232, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(250, 232, 255, 0.5) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(255, 228, 230, 0.4) 0%, transparent 50%),
+    linear-gradient(135deg, #fdf2f8 0%, #fce7f3 25%, #fae8ff 50%, #ffe4e6 75%, #fdf2f8 100%);
+  animation: meshShift 12s ease-in-out infinite alternate;
+}
+
+@keyframes meshShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Glassmorphism Cards
+   ───────────────────────────────────────────────────────── */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(251, 207, 232, 0.4);
+  box-shadow:
+    0 8px 32px rgba(236, 72, 153, 0.08),
+    0 2px 8px rgba(236, 72, 153, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glass-card-strong {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(251, 207, 232, 0.5);
+  box-shadow:
+    0 12px 40px rgba(236, 72, 153, 0.1),
+    0 4px 12px rgba(236, 72, 153, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Pink Button Styles
+   ───────────────────────────────────────────────────────── */
+
+.btn-primary {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 50%, #be185d 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 14px rgba(236, 72, 153, 0.35),
+    0 2px 6px rgba(236, 72, 153, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(236, 72, 153, 0.4),
+    0 4px 12px rgba(236, 72, 153, 0.25);
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-outline {
+  background: rgba(255, 255, 255, 0.5);
+  color: #be185d;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(251, 207, 232, 0.6);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.btn-outline:hover {
+  background: rgba(252, 231, 243, 0.6);
+  border-color: #f9a8d4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.12);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Input Styles
+   ───────────────────────────────────────────────────────── */
+
+.input-pink {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(251, 207, 232, 0.5);
+  background: rgba(255, 255, 255, 0.6);
+  color: #4a1942;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  outline: none;
+  backdrop-filter: blur(4px);
+}
+
+.input-pink::placeholder {
+  color: #d4a0c4;
+}
+
+.input-pink:focus {
+  border-color: #f472b6;
+  box-shadow:
+    0 0 0 3px rgba(244, 114, 182, 0.15),
+    0 2px 8px rgba(236, 72, 153, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Floating Particles / Decorative Blobs
+   ───────────────────────────────────────────────────────── */
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.4;
+  animation: blobFloat 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.blob-1 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #f9a8d4, transparent);
+  top: -5%;
+  right: -5%;
+  animation-delay: 0s;
+}
+
+.blob-2 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, #e879f9, transparent);
+  bottom: -5%;
+  left: -5%;
+  animation-delay: -4s;
+}
+
+.blob-3 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, #fb7185, transparent);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -2s;
+}
+
+@keyframes blobFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(30px, -30px) scale(1.05);
+  }
+  50% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+  75% {
+    transform: translate(15px, 10px) scale(1.02);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Divider
+   ───────────────────────────────────────────────────────── */
+
+.divider-pink {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #d4a0c4;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.divider-pink::before,
+.divider-pink::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(251, 207, 232, 0.8),
+    transparent
+  );
+}
+
+/* ─────────────────────────────────────────────────────────
+   Loading Spinner
+   ───────────────────────────────────────────────────────── */
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Fade-in animation
+   ───────────────────────────────────────────────────────── */
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered delays */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* ─────────────────────────────────────────────────────────
+   Scrollbar – slim pink for task lists
+   ───────────────────────────────────────────────────────── */
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #f9a8d4;
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #f472b6;
+}
+
+/* Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #f9a8d4 transparent;
+}
