@@ -1,9 +1,16 @@
+"use client";
+
 import { CheckSquare, Square } from "lucide-react";
-import { habitsData } from "@/lib/dummy-data";
+import type { HabitData } from "@/lib/dummy-data";
+
+interface HabitTrackerProps {
+  habits: HabitData[];
+  onToggleHabit: (habitIndex: number, dayIndex: number) => void;
+}
 
 const dayHeaders = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default function HabitTracker() {
+export default function HabitTracker({ habits, onToggleHabit }: HabitTrackerProps) {
   return (
     <div className="bg-white rounded-xl border border-pink-200 p-4 overflow-x-auto">
       <h3 className="text-sm font-bold text-pink-700 text-center mb-4">
@@ -30,25 +37,31 @@ export default function HabitTracker() {
           </tr>
         </thead>
         <tbody>
-          {habitsData.map((habit) => (
+          {habits.map((habit, hi) => (
             <tr key={habit.name} className="border-t border-pink-50">
               <td className="text-[11px] text-pink-600 py-1.5 pr-4 font-medium">
                 {habit.name}
               </td>
               {habit.days.map((done, di) => (
                 <td key={di} className="text-center py-1.5">
-                  {done ? (
-                    <CheckSquare className="w-4 h-4 text-pink-400 mx-auto fill-pink-100" />
-                  ) : (
-                    <Square className="w-4 h-4 text-pink-200 mx-auto" />
-                  )}
+                  <button
+                    onClick={() => onToggleHabit(hi, di)}
+                    className="hover:scale-110 transition-transform inline-flex"
+                    aria-label={`Toggle ${habit.name} on ${dayHeaders[di]}`}
+                  >
+                    {done ? (
+                      <CheckSquare className="w-4 h-4 text-pink-400 fill-pink-100 hover:text-pink-600 transition-colors" />
+                    ) : (
+                      <Square className="w-4 h-4 text-pink-200 hover:text-pink-400 transition-colors" />
+                    )}
+                  </button>
                 </td>
               ))}
               <td className="py-1.5 pl-4">
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 bg-pink-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full rounded-full"
+                      className="h-full rounded-full transition-all duration-500"
                       style={{
                         width: `${habit.progress}%`,
                         background: "linear-gradient(90deg, #f9a8d4, #ec4899)",

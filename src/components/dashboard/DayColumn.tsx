@@ -1,11 +1,15 @@
+"use client";
+
 import { CheckCircle2, Circle } from "lucide-react";
 import type { DayData } from "@/lib/dummy-data";
 
 interface DayColumnProps {
   day: DayData;
+  dayIndex: number;
+  onToggleTask: (dayIndex: number, taskIndex: number) => void;
 }
 
-export default function DayColumn({ day }: DayColumnProps) {
+export default function DayColumn({ day, dayIndex, onToggleTask }: DayColumnProps) {
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (day.completionPercent / 100) * circumference;
@@ -40,7 +44,7 @@ export default function DayColumn({ day }: DayColumnProps) {
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={offset}
-              className="transition-all duration-700"
+              className="transition-all duration-500"
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
@@ -58,21 +62,25 @@ export default function DayColumn({ day }: DayColumnProps) {
         </p>
       </div>
 
-      {/* Task List */}
+      {/* Task List – clickable checkboxes */}
       <div className="flex-1 px-2 overflow-y-auto max-h-48 scrollbar-thin">
         <ul className="space-y-1 pb-2">
-          {day.tasks.map((task, i) => (
-            <li key={i} className="flex items-start gap-1.5">
+          {day.tasks.map((task, ti) => (
+            <li
+              key={ti}
+              className="flex items-start gap-1.5 cursor-pointer group"
+              onClick={() => onToggleTask(dayIndex, ti)}
+            >
               {task.completed ? (
-                <CheckCircle2 className="w-3 h-3 text-pink-400 mt-0.5 shrink-0 fill-pink-100" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-pink-400 mt-0.5 shrink-0 fill-pink-100 group-hover:text-pink-600 transition-colors" />
               ) : (
-                <Circle className="w-3 h-3 text-pink-300 mt-0.5 shrink-0" />
+                <Circle className="w-3.5 h-3.5 text-pink-300 mt-0.5 shrink-0 group-hover:text-pink-500 transition-colors" />
               )}
               <span
-                className={`text-[10px] leading-tight ${
+                className={`text-[10px] leading-tight select-none transition-colors ${
                   task.completed
-                    ? "text-pink-500"
-                    : "text-pink-400"
+                    ? "text-pink-500 line-through decoration-pink-300"
+                    : "text-pink-400 group-hover:text-pink-600"
                 }`}
               >
                 {task.name}

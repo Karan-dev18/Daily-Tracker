@@ -1,15 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { LogOut, User } from "lucide-react";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import WeeklyFocusPanel from "@/components/dashboard/WeeklyFocusPanel";
-import OverallProgressChart from "@/components/dashboard/OverallProgressChart";
-import DonutChart from "@/components/dashboard/DonutChart";
-import TaskProgressOverview from "@/components/dashboard/TaskProgressOverview";
-import DayColumn from "@/components/dashboard/DayColumn";
-import HabitTracker from "@/components/dashboard/HabitTracker";
-import { dailyData } from "@/lib/dummy-data";
+import DashboardClient from "@/components/dashboard/DashboardClient";
 
+/**
+ * Authenticated dashboard page.
+ * Server component that fetches the user, then renders
+ * the interactive DashboardClient with the userId for Supabase sync.
+ */
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,6 +17,14 @@ export default async function DashboardPage() {
     user?.user_metadata?.name ||
     user?.email?.split("@")[0] ||
     "User";
+
+  // Compute current week's Monday in ISO format
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  const weekStartDate = monday.toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-pink-50">
@@ -50,45 +56,8 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      {/* ─── Main Dashboard Content ─── */}
-      <div className="max-w-[1440px] mx-auto px-3 lg:px-5 py-4 space-y-4">
-
-        {/* ─── Title Banner ─── */}
-        <DashboardHeader />
-
-        {/* ─── Row 1: Focus Panel + Charts ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left: Weekly Focus Panel */}
-          <div className="lg:col-span-2">
-            <WeeklyFocusPanel />
-          </div>
-
-          {/* Center: Bar Chart */}
-          <div className="lg:col-span-5">
-            <OverallProgressChart />
-          </div>
-
-          {/* Center-Right: Donut */}
-          <div className="lg:col-span-2">
-            <DonutChart />
-          </div>
-
-          {/* Right: Task Progress Overview */}
-          <div className="lg:col-span-3">
-            <TaskProgressOverview />
-          </div>
-        </div>
-
-        {/* ─── Row 2: Daily Columns (Mon–Sun) ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {dailyData.map((day) => (
-            <DayColumn key={day.dayName} day={day} />
-          ))}
-        </div>
-
-        {/* ─── Row 3: Habit Tracker ─── */}
-        <HabitTracker />
-      </div>
+      {/* ─── Interactive Dashboard ─── */}
+      <DashboardClient userId={user?.id} weekStartDate={weekStartDate} />
     </div>
   );
 }

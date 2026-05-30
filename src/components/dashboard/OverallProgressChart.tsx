@@ -1,48 +1,66 @@
-import { overallProgressBars } from "@/lib/dummy-data";
+"use client";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+
+interface OverallProgressChartProps {
+  barData: number[]; // [Mon%, Tue%, ..., Sun%]
+}
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default function OverallProgressChart() {
-  const maxVal = 100;
+export default function OverallProgressChart({ barData }: OverallProgressChartProps) {
+  const chartData = dayLabels.map((day, i) => ({
+    day,
+    value: barData[i] ?? 0,
+  }));
 
   return (
     <div className="bg-white rounded-xl border border-pink-200 p-4 h-full">
-      <h3 className="text-sm font-bold text-pink-700 text-center mb-4">
+      <h3 className="text-sm font-bold text-pink-700 text-center mb-2">
         Overall Progress
       </h3>
-
-      <div className="flex items-end justify-between gap-2 h-36 px-2">
-        {/* Y-axis labels */}
-        <div className="flex flex-col justify-between h-full text-[10px] text-pink-400 pr-1 -mt-1">
-          <span>100</span>
-          <span>75</span>
-          <span>50</span>
-          <span>25</span>
-          <span>0</span>
-        </div>
-
-        {/* Bars */}
-        {overallProgressBars.map((val, i) => (
-          <div key={i} className="flex flex-col items-center flex-1 h-full justify-end">
-            <div className="w-full flex justify-center h-full items-end">
-              <div
-                className="w-6 md:w-8 rounded-t-md transition-all duration-500"
-                style={{
-                  height: `${(val / maxVal) * 100}%`,
-                  background:
-                    val > 0
-                      ? "linear-gradient(180deg, #f472b6 0%, #ec4899 50%, #db2777 100%)"
-                      : "#fce7f3",
-                  minHeight: val > 0 ? "4px" : "2px",
-                }}
+      <ResponsiveContainer width="100%" height={160}>
+        <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#fce7f3" vertical={false} />
+          <XAxis
+            dataKey="day"
+            tick={{ fontSize: 10, fill: "#ec4899", fontWeight: 500 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            domain={[0, 100]}
+            ticks={[0, 25, 50, 75, 100]}
+            tick={{ fontSize: 10, fill: "#f9a8d4" }}
+            axisLine={false}
+            tickLine={false}
+            width={28}
+          />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={600}>
+            {chartData.map((entry, i) => (
+              <Cell
+                key={i}
+                fill={entry.value > 0 ? "url(#pinkBarGrad)" : "#fce7f3"}
               />
-            </div>
-            <span className="text-[10px] text-pink-500 mt-1.5 font-medium">
-              {dayLabels[i]}
-            </span>
-          </div>
-        ))}
-      </div>
+            ))}
+          </Bar>
+          <defs>
+            <linearGradient id="pinkBarGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f472b6" />
+              <stop offset="50%" stopColor="#ec4899" />
+              <stop offset="100%" stopColor="#db2777" />
+            </linearGradient>
+          </defs>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }

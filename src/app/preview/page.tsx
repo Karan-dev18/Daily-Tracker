@@ -1,17 +1,10 @@
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import WeeklyFocusPanel from "@/components/dashboard/WeeklyFocusPanel";
-import OverallProgressChart from "@/components/dashboard/OverallProgressChart";
-import DonutChart from "@/components/dashboard/DonutChart";
-import TaskProgressOverview from "@/components/dashboard/TaskProgressOverview";
-import DayColumn from "@/components/dashboard/DayColumn";
-import HabitTracker from "@/components/dashboard/HabitTracker";
-import { dailyData } from "@/lib/dummy-data";
 import { LogOut, User } from "lucide-react";
+import DashboardClient from "@/components/dashboard/DashboardClient";
 
 /**
- * Static preview of the dashboard layout.
- * Uses dummy data — no Supabase required.
- * Visit /preview to see the full UI.
+ * Static preview of the interactive dashboard.
+ * Uses dummy data — no Supabase required (userId = null → preview mode).
+ * Visit /preview to see the full interactive UI.
  */
 export default function PreviewPage() {
   return (
@@ -42,38 +35,8 @@ export default function PreviewPage() {
         </div>
       </nav>
 
-      {/* ─── Main Dashboard Content ─── */}
-      <div className="max-w-[1440px] mx-auto px-3 lg:px-5 py-4 space-y-4">
-
-        {/* ─── Title Banner ─── */}
-        <DashboardHeader />
-
-        {/* ─── Row 1: Focus Panel + Charts ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-2">
-            <WeeklyFocusPanel />
-          </div>
-          <div className="lg:col-span-5">
-            <OverallProgressChart />
-          </div>
-          <div className="lg:col-span-2">
-            <DonutChart />
-          </div>
-          <div className="lg:col-span-3">
-            <TaskProgressOverview />
-          </div>
-        </div>
-
-        {/* ─── Row 2: Daily Columns (Mon–Sun) ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {dailyData.map((day) => (
-            <DayColumn key={day.dayName} day={day} />
-          ))}
-        </div>
-
-        {/* ─── Row 3: Habit Tracker ─── */}
-        <HabitTracker />
-      </div>
+      {/* ─── Interactive Dashboard (Preview Mode — no Supabase sync) ─── */}
+      <DashboardClient userId={null} />
     </div>
   );
 }
