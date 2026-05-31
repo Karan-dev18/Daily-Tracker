@@ -517,8 +517,23 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
   // Split tasks into the two Organizer sections, preserving each task's
   // original index so toggle/delete (which work by index) stay correct.
   const indexedTasks = tasks.map((task, index) => ({ task, index }));
-  const recurringTasks = indexedTasks.filter(({ task }) => task.taskType === "recurring");
-  const deadlineTasks = indexedTasks.filter(({ task }) => task.taskType === "deadline");
+
+  // Stable sort: incomplete tasks first, completed ones drop to the bottom.
+  // Array.prototype.sort is stable, so same-status tasks keep their order.
+  const sortByCompletion = (
+    a: { task: TodayTask; index: number },
+    b: { task: TodayTask; index: number }
+  ) => (a.task.completed === b.task.completed ? 0 : a.task.completed ? 1 : -1);
+
+  const recurringTasks = indexedTasks
+    .filter(({ task }) => task.taskType === "recurring")
+    .sort(sortByCompletion);
+  const deadlineTasks = indexedTasks
+    .filter(({ task }) => task.taskType === "deadline")
+    .sort(sortByCompletion);
+
+  const recurringDone = recurringTasks.filter(({ task }) => task.completed).length;
+  const recurringAllDone = recurringTasks.length > 0 && recurringDone === recurringTasks.length;
 
   // Render a single task row (shared by both sections).
   const renderTaskRow = ({ task, index }: { task: TodayTask; index: number }) => {
@@ -718,14 +733,16 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
               <div className="bg-pink-100/70 px-3 py-1.5 flex items-center justify-between">
                 <h4 className="text-xs font-bold text-pink-700">🔄 Recurring Habits</h4>
                 <span className="text-[10px] text-pink-500 font-semibold">
-                  {recurringTasks.filter(({ task }) => task.completed).length}/{recurringTasks.length}
+                  {recurringDone}/{recurringTasks.length}
                 </span>
               </div>
-              {recurringTasks.length > 0 ? (
+              {recurringTasks.length > 0 && (
                 <ul className="p-2 space-y-1.5">{recurringTasks.map(renderTaskRow)}</ul>
-              ) : (
-                <p className="text-[11px] text-pink-300 px-3 py-3 text-center">
-                  No recurring habits today.
+              )}
+              {/* Aesthetic empty state: list empty OR every habit crushed */}
+              {(recurringTasks.length === 0 || recurringAllDone) && (
+                <p className="text-xs font-medium text-pink-500 px-3 py-4 text-center">
+                  All habits crushed! You are glowing ✨
                 </p>
               )}
             </div>
@@ -741,8 +758,8 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
               {deadlineTasks.length > 0 ? (
                 <ul className="p-2 space-y-1.5">{deadlineTasks.map(renderTaskRow)}</ul>
               ) : (
-                <p className="text-[11px] text-rose-300 px-3 py-3 text-center">
-                  No deadlines today. Nice and clear!
+                <p className="text-xs font-medium text-rose-500 px-3 py-4 text-center">
+                  No critical deadlines today. Take a breath! 🌸
                 </p>
               )}
             </div>
