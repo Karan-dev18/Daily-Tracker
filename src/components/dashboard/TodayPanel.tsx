@@ -13,6 +13,7 @@ import {
 } from "@/lib/supabase/crud";
 import type { TaskType } from "@/lib/types/database";
 import { celebrate, originFromEvent } from "@/lib/confetti";
+import { useStreak } from "@/components/dashboard/StreakContext";
 
 // ════════════════════════════════════════════════════════
 //  Types
@@ -138,6 +139,7 @@ function findMostRecentLocalTasksBefore(userId: string, beforeDate: string): Tod
 // ════════════════════════════════════════════════════════
 
 export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
+  const { refreshStreak } = useStreak();
   const [tasks, setTasks] = useState<TodayTask[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
@@ -271,12 +273,30 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
           celebrate(originFromEvent(event));
         }
 
+        // ── Streak: did this complete the FINAL recurring habit for today? ──
+        const recurring = next.filter((task) => task.taskType === "recurring");
+        const justFinishedAllRecurring =
+          t.completed &&
+          t.taskType === "recurring" &&
+          recurring.length > 0 &&
+          recurring.every((task) => task.completed);
+
         if (storageMode === "local") {
+          // No DB to sync; refresh is remote-only, so just add the extra burst.
+          if (justFinishedAllRecurring) celebrate(originFromEvent(event));
           return next;
         }
 
-        toggleTaskCompletion(userId, todayDate, t.name, t.completed).catch((err) =>
-          {
+        toggleTaskCompletion(userId, todayDate, t.name, t.completed)
+          .then(() => {
+            // Re-query the authoritative streak only AFTER the write commits,
+            // so today's now-completed habit is reflected in the count.
+            if (justFinishedAllRecurring) {
+              celebrate(originFromEvent(event)); // extra burst for hitting 100%
+              refreshStreak();
+            }
+          })
+          .catch((err) => {
             if (isSupabaseSetupError(err)) {
               console.warn("[TodayPanel] toggle now using local-only mode.");
               setStorageMode("local");
@@ -286,12 +306,11 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
               return;
             }
             console.error("[TodayPanel] toggle sync failed:", err instanceof Error ? err.message : err);
-          }
-        );
+          });
         return next;
       });
     },
-    [storageMode, userId, todayDate]
+    [storageMode, userId, todayDate, refreshStreak]
   );
 
   // ─── Add a new task ───

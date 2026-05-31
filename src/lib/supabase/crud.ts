@@ -285,6 +285,115 @@ export async function upsertTasks(
 }
 
 // ════════════════════════════════════════════════════════
+//  STREAKS  (recurring-habit consistency)
+// ════════════════════════════════════════════════════════
+
+/**
+ * Pure streak computation from a list of recurring tasks.
+ *
+ * Rules:
+ *   - Only 'recurring' tasks count (caller must pass recurring rows).
+ *   - A day "counts" only if ALL of that day's recurring tasks are completed.
+ *   - A day with ZERO recurring tasks is neutral: it neither extends nor
+ *     breaks the streak (we simply skip it).
+ *   - Walking backward from today, the first active day (>=1 recurring task)
+ *     that is NOT fully complete resets the streak to 0.
+ *   - Today is special: if today's recurring habits aren't all done yet, we
+ *     don't penalize it — we just start counting from the most recent
+ *     completed active day. (An unfinished today = streak hasn't grown yet,
+ *     not that it's broken.)
+ *
+ * @param rows    recurring task rows ({ date, is_completed })
+ * @param todayIso today's date as "YYYY-MM-DD"
+ */
+export function computeStreakFromRecurringRows(
+  rows: { date: string; is_completed: boolean }[],
+  todayIso: string
+): number {
+  // Group completion stats by date.
+  const byDate = new Map<string, { total: number; done: number }>();
+  for (const r of rows) {
+    const bucket = byDate.get(r.date) ?? { total: 0, done: 0 };
+    bucket.total += 1;
+    if (r.is_completed) bucket.done += 1;
+    byDate.set(r.date, bucket);
+  }
+
+  // Active days (>=1 recurring task), most recent first.
+  const activeDays = [...byDate.entries()]
+    .filter(([, v]) => v.total > 0)
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1)); // descending by date string
+
+  let streak = 0;
+
+  for (const [date, { total, done }] of activeDays) {
+    // Ignore any future-dated rows defensively.
+    if (date > todayIso) continue;
+
+    const fullyComplete = done === total;
+
+    if (date === todayIso) {
+      // Today not finished yet → don't break; keep scanning earlier days.
+      if (!fullyComplete) continue;
+      streak += 1;
+    } else {
+      // A past active day that isn't fully complete breaks the streak.
+      if (!fullyComplete) break;
+      streak += 1;
+    }
+  }
+
+  return streak;
+}
+
+/**
+ * Calculate the user's current daily streak of fully-completed recurring
+ * habits, looking back over recent history.
+ *
+ * Returns 0 on any setup/auth issue rather than throwing, since the streak
+ * badge is a non-critical, decorative feature.
+ */
+export async function calculateRecurringStreak(
+  userId: string,
+  todayIso: string,
+  lookbackDays = 365
+): Promise<number> {
+  try {
+    throwIfKnownMissingTable("tasks");
+    const verifiedUserId = await verifySession(userId);
+    const supabase = getClient();
+
+    // Earliest date we bother scanning (todayIso minus lookbackDays).
+    const earliest = new Date(`${todayIso}T00:00:00Z`);
+    earliest.setUTCDate(earliest.getUTCDate() - lookbackDays);
+    const earliestIso = earliest.toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("date, is_completed")
+      .eq("user_id", verifiedUserId)
+      .eq("task_type", "recurring")
+      .gte("date", earliestIso)
+      .lte("date", todayIso)
+      .order("date", { ascending: false });
+
+    if (error) {
+      logSupabaseIssue("calculateRecurringStreak failed", error, "tasks");
+      return 0;
+    }
+
+    return computeStreakFromRecurringRows(data ?? [], todayIso);
+  } catch (err) {
+    if (isSupabaseSetupError(err)) {
+      console.warn("[calculateRecurringStreak] streak unavailable until Supabase schema is initialized.");
+      return 0;
+    }
+    console.error("[calculateRecurringStreak] unexpected error:", err instanceof Error ? err.message : err);
+    return 0;
+  }
+}
+
+// ════════════════════════════════════════════════════════
 //  DAILY CARRY-OVER  (copy yesterday's routine)
 // ════════════════════════════════════════════════════════
 

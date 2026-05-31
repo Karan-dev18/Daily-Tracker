@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { LogOut, User } from "lucide-react";
 import DashboardClient from "@/components/dashboard/DashboardClient";
+import { StreakProvider } from "@/components/dashboard/StreakContext";
+import StreakBadge from "@/components/dashboard/StreakBadge";
 
 /**
  * Authenticated dashboard page.
@@ -30,6 +32,7 @@ export default async function DashboardPage() {
   const todayDate = now.toISOString().split("T")[0];
 
   return (
+    <StreakProvider userId={user?.id} todayDate={todayDate}>
     <div className="min-h-screen bg-pink-50">
       {/* ─── Top Nav Bar ─── */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-pink-200 sticky top-0 z-50">
@@ -44,6 +47,7 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2">
+              <StreakBadge />
               <div className="w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center">
                 <User className="w-3.5 h-3.5 text-pink-600" />
               </div>
@@ -62,5 +66,6 @@ export default async function DashboardPage() {
       {/* ─── Interactive Dashboard ─── */}
       <DashboardClient userId={user?.id} weekStartDate={weekStartDate} todayDate={todayDate} />
     </div>
+    </StreakProvider>
   );
 }
