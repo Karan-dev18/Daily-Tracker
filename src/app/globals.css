@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode (Tailwind v4): `dark:` responds to a `.dark`
+   ancestor instead of the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─────────────────────────────────────────────────────────
    Pink Theme Design Tokens
    ───────────────────────────────────────────────────────── */
@@ -36,12 +40,21 @@
 :root {
   --background: #fdf2f8;
   --foreground: #4a1942;
+  --donut-track: #fce7f3;
+}
+
+/* Dark Mode palette — midnight charcoal/deep velvet with glowing pink accents */
+.dark {
+  --background: #121214;
+  --foreground: #f5e6f0;
+  --donut-track: #3d2438;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -353,4 +366,69 @@ body {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: #f9a8d4 transparent;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Dark Mode overrides for custom component classes
+   ───────────────────────────────────────────────────────── */
+
+.dark .bg-mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(190, 24, 93, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(217, 70, 239, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(244, 63, 94, 0.15) 0%, transparent 50%),
+    linear-gradient(135deg, #121214 0%, #1a1320 25%, #1e1b4b 50%, #1a1320 75%, #121214 100%);
+}
+
+.dark .glass-card {
+  background: rgba(30, 27, 36, 0.65);
+  border: 1px solid rgba(236, 72, 153, 0.25);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(236, 72, 153, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dark .glass-card-strong {
+  background: rgba(30, 27, 36, 0.82);
+  border: 1px solid rgba(236, 72, 153, 0.3);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(236, 72, 153, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dark .btn-outline {
+  background: rgba(30, 27, 36, 0.6);
+  color: #f9a8d4;
+  border-color: rgba(236, 72, 153, 0.4);
+}
+
+.dark .btn-outline:hover {
+  background: rgba(190, 24, 93, 0.25);
+  border-color: #ec4899;
+}
+
+.dark .input-pink {
+  background: rgba(30, 27, 36, 0.6);
+  color: #f5e6f0;
+  border-color: rgba(236, 72, 153, 0.35);
+}
+
+.dark .input-pink::placeholder {
+  color: #9b7d92;
+}
+
+.dark .input-pink:focus {
+  border-color: #ec4899;
+  background: rgba(30, 27, 36, 0.85);
+}
+
+.dark .divider-pink {
+  color: #9b7d92;
+}
+
+/* Keep the neon pink glow strong on dark backgrounds */
+.dark .blob {
+  opacity: 0.5;
 }

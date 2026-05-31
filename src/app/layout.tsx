@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider, themeInitScript } from "@/components/ThemeProvider";
 
 const outfit = Outfit({
   variable: "--font-geist-sans",
@@ -27,8 +28,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+    <html lang="en" suppressHydrationWarning className={`${outfit.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col font-sans">
+        {/* Pre-hydration theme script: sets the `.dark` class before paint to
+            prevent a flash of the wrong theme. React 19 hoists this <script>
+            to <head>, so no manual <head> element is needed (which would
+            violate App Router rules and trigger the script-tag warning). */}
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

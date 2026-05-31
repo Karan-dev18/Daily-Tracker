@@ -15,7 +15,7 @@ export default function DonutChart({ percent, completed, total }: DonutChartProp
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-pink-200 p-4 h-full flex flex-col items-center justify-center">
+    <div className="bg-white dark:bg-[#1e1b24] rounded-xl border border-pink-200 dark:border-pink-900/40 p-4 h-full flex flex-col items-center justify-center">
       <div className="relative w-32 h-32">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -32,7 +32,7 @@ export default function DonutChart({ percent, completed, total }: DonutChartProp
               animationDuration={800}
             >
               <Cell fill="url(#donutGrad)" />
-              <Cell fill="#fce7f3" />
+              <Cell fill="var(--donut-track, #fce7f3)" />
             </Pie>
             <defs>
               <linearGradient id="donutGrad" x1="0" y1="0" x2="1" y2="1">
@@ -45,11 +45,11 @@ export default function DonutChart({ percent, completed, total }: DonutChartProp
 
         {/* Center text overlay */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-bold text-pink-600">{percent}%</span>
+          <span className="text-2xl font-bold text-pink-600 dark:text-pink-300">{percent}%</span>
         </div>
       </div>
 
-      <p className="text-xs text-pink-500 mt-1 font-medium">
+      <p className="text-xs text-pink-500 dark:text-pink-400 mt-1 font-medium">
         {completed} / {total} completed
       </p>
     </div>

@@ -49,9 +49,9 @@ function EditableCard({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-pink-200 p-4 flex-1 group relative">
+    <div className="bg-white dark:bg-[#1e1b24] rounded-xl border border-pink-200 dark:border-pink-900/40 p-4 flex-1 group relative">
       <div className="flex items-center gap-2 mb-2">
-        <h3 className="text-sm font-bold text-pink-700">{label}</h3>
+        <h3 className="text-sm font-bold text-pink-700 dark:text-pink-300">{label}</h3>
         {icon}
         {!editing && (
           <button
@@ -59,7 +59,7 @@ function EditableCard({
             className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
             aria-label={`Edit ${label}`}
           >
-            <Pencil className="w-3 h-3 text-pink-400 hover:text-pink-600" />
+            <Pencil className="w-3 h-3 text-pink-400 hover:text-pink-600 dark:hover:text-pink-200" />
           </button>
         )}
       </div>
@@ -74,7 +74,7 @@ function EditableCard({
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") { setEditing(false); setDraft(value); }
             }}
-            className="flex-1 text-sm text-pink-600 bg-pink-50 border border-pink-200 rounded-lg px-2 py-1 outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-200"
+            className="flex-1 text-sm text-pink-600 dark:text-pink-200 bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-800/50 rounded-lg px-2 py-1 outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-200"
           />
           <button
             onClick={handleSave}
@@ -84,8 +84,8 @@ function EditableCard({
           </button>
         </div>
       ) : (
-        <p className={`text-sm text-pink-600 ${italic ? "italic" : ""}`}>
-          {value || <span className="text-pink-300">Click to edit...</span>}
+        <p className={`text-sm text-pink-600 dark:text-pink-300 ${italic ? "italic" : ""}`}>
+          {value || <span className="text-pink-300 dark:text-pink-700">Click to edit...</span>}
         </p>
       )}
     </div>

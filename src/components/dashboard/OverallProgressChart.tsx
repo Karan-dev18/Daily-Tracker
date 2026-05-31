@@ -26,13 +26,13 @@ export default function OverallProgressChart({ barData, labels, title }: Overall
   }));
 
   return (
-    <div className="bg-white rounded-xl border border-pink-200 p-4 h-full">
-      <h3 className="text-sm font-bold text-pink-700 text-center mb-2">
+    <div className="bg-white dark:bg-[#1e1b24] rounded-xl border border-pink-200 dark:border-pink-900/40 p-4 h-full">
+      <h3 className="text-sm font-bold text-pink-700 dark:text-pink-300 text-center mb-2">
         {title ?? "Overall Progress"}
       </h3>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#fce7f3" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--donut-track, #fce7f3)" vertical={false} />
           <XAxis
             dataKey="day"
             tick={{ fontSize: 10, fill: "#ec4899", fontWeight: 500 }}
@@ -51,7 +51,7 @@ export default function OverallProgressChart({ barData, labels, title }: Overall
             {chartData.map((entry, i) => (
               <Cell
                 key={i}
-                fill={entry.value > 0 ? "url(#pinkBarGrad)" : "#fce7f3"}
+                fill={entry.value > 0 ? "url(#pinkBarGrad)" : "var(--donut-track, #fce7f3)"}
               />
             ))}
           </Bar>

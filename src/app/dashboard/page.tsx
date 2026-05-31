@@ -4,6 +4,7 @@ import { LogOut, User } from "lucide-react";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { StreakProvider } from "@/components/dashboard/StreakContext";
 import StreakBadge from "@/components/dashboard/StreakBadge";
+import ThemeToggle from "@/components/ThemeToggle";
 
 /**
  * Authenticated dashboard page.
@@ -33,9 +34,9 @@ export default async function DashboardPage() {
 
   return (
     <StreakProvider userId={user?.id} todayDate={todayDate}>
-    <div className="min-h-screen bg-pink-50">
+    <div className="min-h-screen bg-pink-50 dark:bg-[#121214] transition-colors">
       {/* ─── Top Nav Bar ─── */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-pink-200 sticky top-0 z-50">
+      <nav className="bg-white/80 dark:bg-[#1e1b24]/80 backdrop-blur-md border-b border-pink-200 dark:border-pink-900/40 sticky top-0 z-50">
         <div className="max-w-[1440px] mx-auto px-4 lg:px-6 flex items-center justify-between h-12">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center">
@@ -43,18 +44,19 @@ export default async function DashboardPage() {
                 <path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" />
               </svg>
             </div>
-            <span className="text-sm font-bold text-pink-700">Daily Tracker</span>
+            <span className="text-sm font-bold text-pink-700 dark:text-pink-300">Daily Tracker</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2">
               <StreakBadge />
-              <div className="w-6 h-6 rounded-full bg-pink-200 flex items-center justify-center">
-                <User className="w-3.5 h-3.5 text-pink-600" />
+              <div className="w-6 h-6 rounded-full bg-pink-200 dark:bg-pink-900/50 flex items-center justify-center">
+                <User className="w-3.5 h-3.5 text-pink-600 dark:text-pink-300" />
               </div>
-              <span className="text-xs font-medium text-pink-600">{displayName}</span>
+              <span className="text-xs font-medium text-pink-600 dark:text-pink-300">{displayName}</span>
             </div>
+            <ThemeToggle />
             <form action={signOut}>
-              <button type="submit" id="signout-btn" className="flex items-center gap-1.5 text-xs font-medium text-pink-500 hover:text-pink-700 transition-colors bg-pink-50 hover:bg-pink-100 rounded-lg px-3 py-1.5">
+              <button type="submit" id="signout-btn" className="flex items-center gap-1.5 text-xs font-medium text-pink-500 hover:text-pink-700 dark:text-pink-300 dark:hover:text-pink-200 transition-colors bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/40 dark:hover:bg-pink-900/40 rounded-lg px-3 py-1.5">
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Sign Out</span>
               </button>

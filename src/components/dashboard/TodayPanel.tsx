@@ -558,7 +558,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
     return (
       <li
         key={task.id ?? `temp-${task.name}-${index}`}
-        className="flex items-center gap-2 group rounded-lg hover:bg-pink-50 px-1.5 py-1 transition-colors"
+        className="flex items-center gap-2 group rounded-lg hover:bg-pink-50 dark:hover:bg-pink-950/30 px-1.5 py-1 transition-colors"
       >
         {isEditing ? (
           /* ─── Inline edit mode ─── */
@@ -577,7 +577,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
                   cancelEditing();
                 }
               }}
-              className="flex-1 text-xs border border-pink-300 focus:border-pink-500 focus:outline-none rounded-md px-2 py-1 text-pink-700"
+              className="flex-1 text-xs border border-pink-300 dark:border-pink-800 bg-white dark:bg-pink-950/40 focus:border-pink-500 focus:outline-none rounded-md px-2 py-1 text-pink-700 dark:text-pink-200"
             />
             <button
               onClick={() => saveEditing(index)}
@@ -589,7 +589,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
             </button>
             <button
               onClick={cancelEditing}
-              className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
+              className="text-pink-300 dark:text-pink-600 hover:text-rose-500 shrink-0 transition-colors"
               aria-label="Cancel edit"
               title="Cancel"
             >
@@ -604,16 +604,16 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
               className="flex items-center gap-2 flex-1 text-left"
             >
               {task.completed ? (
-                <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 fill-pink-100" />
+                <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 fill-pink-100 dark:fill-pink-900/40" />
               ) : (
-                <Circle className="w-4 h-4 text-pink-300 shrink-0" />
+                <Circle className="w-4 h-4 text-pink-300 dark:text-pink-700 shrink-0" />
               )}
               <span className="flex flex-col">
                 <span
                   className={`text-xs leading-tight select-none transition-colors ${
                     task.completed
                       ? "text-pink-500 line-through decoration-pink-300"
-                      : "text-pink-600"
+                      : "text-pink-600 dark:text-pink-300"
                   }`}
                 >
                   {task.name}
@@ -625,7 +625,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
             </button>
             <button
               onClick={() => startEditing(index, task.name)}
-              className="text-pink-300 hover:text-pink-600 shrink-0 transition-colors"
+              className="text-pink-300 dark:text-pink-600 hover:text-pink-600 dark:hover:text-pink-300 shrink-0 transition-colors"
               aria-label={`Edit ${task.name}`}
               title="Edit task"
             >
@@ -633,7 +633,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
             </button>
             <button
               onClick={() => handleDelete(index)}
-              className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
+              className="text-pink-300 dark:text-pink-600 hover:text-rose-500 shrink-0 transition-colors"
               aria-label={`Delete ${task.name}`}
               title="Remove task"
             >
@@ -646,9 +646,9 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
+    <div className="bg-white dark:bg-[#1e1b24] rounded-xl border border-pink-200 dark:border-pink-900/40 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-pink-400 to-pink-500 text-white px-4 py-2.5 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-pink-400 to-pink-500 dark:from-pink-600 dark:to-pink-700 text-white px-4 py-2.5 flex items-center justify-between">
         <div>
           <p className="text-sm font-bold">Today</p>
           <p className="text-[11px] opacity-90">{formatDisplayDate(todayDate)}</p>
@@ -662,24 +662,24 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
 
       <div className="p-4 space-y-3">
         {notice && (
-          <p className="text-xs text-pink-600 bg-pink-50 border border-pink-200 rounded-lg px-3 py-2">
+          <p className="text-xs text-pink-600 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-900/50 rounded-lg px-3 py-2">
             {notice}
           </p>
         )}
 
         {error && (
-          <p className="text-xs text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+          <p className="text-xs text-rose-500 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-lg px-3 py-2">
             {error}
           </p>
         )}
 
         {/* ─── Today's Task Progress Overview ─── */}
         {totalCount > 0 && (
-          <div className="flex items-center gap-3 bg-pink-50/60 border border-pink-100 rounded-xl p-3">
+          <div className="flex items-center gap-3 bg-pink-50/60 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/40 rounded-xl p-3">
             {/* Mini pie */}
             <div className="relative w-14 h-14 shrink-0">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#fce7f3" strokeWidth="5" />
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--donut-track, #fce7f3)" strokeWidth="5" />
                 <circle
                   cx="18" cy="18" r="15.5" fill="none" stroke="#ec4899" strokeWidth="5"
                   strokeLinecap="round"
@@ -688,15 +688,15 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[11px] font-bold text-pink-600">{progressPercent}%</span>
+                <span className="text-[11px] font-bold text-pink-600 dark:text-pink-300">{progressPercent}%</span>
               </div>
             </div>
             <div className="flex-1">
-              <p className="text-xs font-bold text-pink-700">Today&apos;s Progress</p>
-              <p className="text-[11px] text-pink-500">
+              <p className="text-xs font-bold text-pink-700 dark:text-pink-300">Today&apos;s Progress</p>
+              <p className="text-[11px] text-pink-500 dark:text-pink-400">
                 {doneCount} of {totalCount} tasks completed
               </p>
-              <div className="mt-1.5 h-2 bg-pink-100 rounded-full overflow-hidden">
+              <div className="mt-1.5 h-2 bg-pink-100 dark:bg-pink-950/50 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -729,36 +729,37 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
         ) : (
           <div className="space-y-3">
             {/* ─── Recurring Habits ─── */}
-            <div className="rounded-xl border border-pink-200 overflow-hidden">
-              <div className="bg-pink-100/70 px-3 py-1.5 flex items-center justify-between">
-                <h4 className="text-xs font-bold text-pink-700">🔄 Recurring Habits</h4>
-                <span className="text-[10px] text-pink-500 font-semibold">
+            <div className="rounded-xl border border-pink-200 dark:border-pink-900/40 overflow-hidden">
+              <div className="bg-pink-100/70 dark:bg-pink-950/40 px-3 py-1.5 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-pink-700 dark:text-pink-300">🔄 Recurring Habits</h4>
+                <span className="text-[10px] text-pink-500 dark:text-pink-400 font-semibold">
                   {recurringDone}/{recurringTasks.length}
                 </span>
               </div>
-              {recurringTasks.length > 0 && (
-                <ul className="p-2 space-y-1.5">{recurringTasks.map(renderTaskRow)}</ul>
-              )}
-              {/* Aesthetic empty state: list empty OR every habit crushed */}
+              {/* Celebration: list empty OR every habit crushed — shown ABOVE the list */}
               {(recurringTasks.length === 0 || recurringAllDone) && (
-                <p className="text-xs font-medium text-pink-500 px-3 py-4 text-center">
+                <p className="text-xs font-medium text-pink-500 dark:text-pink-300 px-3 py-3 text-center">
                   All habits crushed! You are glowing ✨
                 </p>
+              )}
+              {/* Keep completed habits visible so progress stays in view */}
+              {recurringTasks.length > 0 && (
+                <ul className="p-2 pt-0 space-y-1.5">{recurringTasks.map(renderTaskRow)}</ul>
               )}
             </div>
 
             {/* ─── Critical Deadlines ─── */}
-            <div className="rounded-xl border border-rose-200 overflow-hidden">
-              <div className="bg-rose-100/70 px-3 py-1.5 flex items-center justify-between">
-                <h4 className="text-xs font-bold text-rose-700">🚨 Critical Deadlines</h4>
-                <span className="text-[10px] text-rose-500 font-semibold">
+            <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 overflow-hidden">
+              <div className="bg-rose-100/70 dark:bg-rose-950/40 px-3 py-1.5 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-rose-700 dark:text-rose-300">🚨 Critical Deadlines</h4>
+                <span className="text-[10px] text-rose-500 dark:text-rose-400 font-semibold">
                   {deadlineTasks.filter(({ task }) => task.completed).length}/{deadlineTasks.length}
                 </span>
               </div>
               {deadlineTasks.length > 0 ? (
                 <ul className="p-2 space-y-1.5">{deadlineTasks.map(renderTaskRow)}</ul>
               ) : (
-                <p className="text-xs font-medium text-rose-500 px-3 py-4 text-center">
+                <p className="text-xs font-medium text-rose-500 dark:text-rose-300 px-3 py-4 text-center">
                   No critical deadlines today. Take a breath! 🌸
                 </p>
               )}
@@ -774,7 +775,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
               value={newTaskName}
               onChange={(e) => setNewTaskName(e.target.value)}
               placeholder="Add a task for today..."
-              className="flex-1 text-xs border border-pink-200 focus:border-pink-400 focus:outline-none rounded-lg px-3 py-2 text-pink-700 placeholder:text-pink-300"
+              className="flex-1 text-xs border border-pink-200 dark:border-pink-900/50 bg-white dark:bg-pink-950/30 focus:border-pink-400 focus:outline-none rounded-lg px-3 py-2 text-pink-700 dark:text-pink-200 placeholder:text-pink-300 dark:placeholder:text-pink-700"
             />
             <button
               type="submit"
@@ -788,7 +789,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
 
           {/* Task type selector */}
           <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-pink-200 overflow-hidden text-[11px] font-semibold">
+            <div className="flex rounded-lg border border-pink-200 dark:border-pink-900/50 overflow-hidden text-[11px] font-semibold">
               <button
                 type="button"
                 onClick={() => setNewTaskType("recurring")}
@@ -796,7 +797,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
                 className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors ${
                   newTaskType === "recurring"
                     ? "bg-pink-500 text-white"
-                    : "bg-white text-pink-500 hover:bg-pink-50"
+                    : "bg-white dark:bg-[#1e1b24] text-pink-500 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
                 }`}
               >
                 <Repeat className="w-3 h-3" />
@@ -806,10 +807,10 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
                 type="button"
                 onClick={() => setNewTaskType("deadline")}
                 aria-pressed={newTaskType === "deadline"}
-                className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors border-l border-pink-200 ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors border-l border-pink-200 dark:border-pink-900/50 ${
                   newTaskType === "deadline"
                     ? "bg-rose-500 text-white"
-                    : "bg-white text-rose-500 hover:bg-rose-50"
+                    : "bg-white dark:bg-[#1e1b24] text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                 }`}
               >
                 <CalendarClock className="w-3 h-3" />
@@ -824,7 +825,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
                 value={newDueDate}
                 min={todayDate}
                 onChange={(e) => setNewDueDate(e.target.value)}
-                className="text-xs border border-rose-200 focus:border-rose-400 focus:outline-none rounded-lg px-2 py-1.5 text-rose-600"
+                className="text-xs border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-rose-950/20 focus:border-rose-400 focus:outline-none rounded-lg px-2 py-1.5 text-rose-600 dark:text-rose-300"
                 aria-label="Due date (optional)"
               />
             )}

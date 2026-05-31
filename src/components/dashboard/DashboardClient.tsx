@@ -373,7 +373,7 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
         <DashboardHeader />
         <div className="flex items-center justify-center py-20">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-pink-200 border-t-pink-500 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-3 border-pink-200 dark:border-pink-900 border-t-pink-500 rounded-full animate-spin" />
             <p className="text-sm text-pink-400 font-medium">Loading your tracker...</p>
           </div>
         </div>
@@ -391,7 +391,7 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
       <DashboardHeader />
 
       {/* ─── Tab Navigation Bar ─── */}
-      <div className="flex items-center gap-1 bg-white border border-pink-200 rounded-xl p-1 overflow-x-auto">
+      <div className="flex items-center gap-1 bg-white dark:bg-[#1e1b24] border border-pink-200 dark:border-pink-900/40 rounded-xl p-1 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -400,7 +400,7 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === id
                 ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-sm"
-                : "text-pink-500 hover:bg-pink-50"
+                : "text-pink-500 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -416,7 +416,7 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
           {!isPreview && userId && todayDate ? (
             <TodayPanel userId={userId} todayDate={todayDate} />
           ) : (
-            <div className="bg-white rounded-xl border border-pink-200 p-6 text-center">
+            <div className="bg-white dark:bg-[#1e1b24] rounded-xl border border-pink-200 dark:border-pink-900/40 p-6 text-center">
               <p className="text-sm text-pink-400 font-medium">
                 Sign in to track today&apos;s recurring habits and deadlines.
               </p>
@@ -503,20 +503,20 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
 
       {/* ════════════════ YEARLY TAB ════════════════ */}
       {activeTab === "yearly" && (
-        <div className="bg-white rounded-xl border border-pink-200 p-12 flex flex-col items-center justify-center text-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center">
+        <div className="bg-white dark:bg-[#1e1b24] rounded-xl border border-pink-200 dark:border-pink-900/40 p-12 flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-pink-100 dark:bg-pink-950/50 flex items-center justify-center">
             <CalendarCheck className="w-7 h-7 text-pink-400" />
           </div>
-          <p className="text-base font-bold text-pink-700">Yearly analytics coming soon!</p>
+          <p className="text-base font-bold text-pink-700 dark:text-pink-300">Yearly analytics coming soon!</p>
           <p className="text-sm text-pink-400 max-w-sm">
             We&apos;re building a full 12-month view of your habits and deadlines. Check back shortly.
           </p>
           <Link
             href={isPreview ? "/preview/analytics" : "/dashboard/analytics"}
-            className="group mt-2 flex items-center gap-2 bg-white border border-pink-200 hover:border-pink-400 rounded-xl px-5 py-2.5 transition-all hover:shadow-md"
+            className="group mt-2 flex items-center gap-2 bg-white dark:bg-[#1e1b24] border border-pink-200 dark:border-pink-900/40 hover:border-pink-400 rounded-xl px-5 py-2.5 transition-all hover:shadow-md"
           >
             <BarChart3 className="w-4 h-4 text-pink-400 group-hover:text-pink-600 transition-colors" />
-            <span className="text-sm font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">
+            <span className="text-sm font-semibold text-pink-600 dark:text-pink-300 group-hover:text-pink-700 transition-colors">
               View Yearly Analytics
             </span>
             <span className="text-pink-300 group-hover:text-pink-500 transition-colors">→</span>
