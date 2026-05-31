@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { CheckCircle2, Circle, Plus, Trash2, CopyPlus, Loader2, CalendarClock, Repeat, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Trash2, CopyPlus, Loader2, CalendarClock, Repeat, AlertTriangle, Pencil, Check, X } from "lucide-react";
 import {
   fetchTasksForDate,
   copyPreviousDayTasks,
   addTask,
   deleteTaskById,
   toggleTaskCompletion,
+  renameTask,
   isSupabaseSetupError,
 } from "@/lib/supabase/crud";
 import type { TaskType } from "@/lib/types/database";
+import { celebrate, originFromEvent } from "@/lib/confetti";
 
 // ════════════════════════════════════════════════════════
 //  Types
@@ -146,6 +148,10 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("remote");
 
+  // Inline editing state: index of the task being edited + its draft text.
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -254,11 +260,16 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
 
   // ─── Toggle a task ───
   const handleToggle = useCallback(
-    (index: number) => {
+    (index: number, event?: { clientX: number; clientY: number }) => {
       setTasks((prev) => {
         const next = [...prev];
         const t = { ...next[index], completed: !next[index].completed };
         next[index] = t;
+
+        // 🎉 Celebrate only when a task transitions to completed.
+        if (t.completed) {
+          celebrate(originFromEvent(event));
+        }
 
         if (storageMode === "local") {
           return next;
@@ -402,7 +413,76 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
     [storageMode, tasks, userId]
   );
 
-  // ─── Loading state ───
+  // ─── Inline edit: start / cancel / save ───
+  const startEditing = useCallback((index: number, currentName: string) => {
+    setEditingIndex(index);
+    setEditingValue(currentName);
+    setError(null);
+  }, []);
+
+  const cancelEditing = useCallback(() => {
+    setEditingIndex(null);
+    setEditingValue("");
+  }, []);
+
+  const saveEditing = useCallback(
+    async (index: number) => {
+      const target = tasks[index];
+      const trimmed = editingValue.trim();
+
+      // No-op if empty or unchanged.
+      if (!trimmed || trimmed === target.name) {
+        cancelEditing();
+        return;
+      }
+
+      // Guard against duplicate names in local state.
+      if (
+        tasks.some(
+          (t, i) => i !== index && t.name.toLowerCase() === trimmed.toLowerCase()
+        )
+      ) {
+        setError("A task with that name already exists for today.");
+        return;
+      }
+
+      const previousName = target.name;
+
+      // Optimistic update
+      setTasks((prev) =>
+        prev.map((t, i) => (i === index ? { ...t, name: trimmed } : t))
+      );
+      cancelEditing();
+
+      if (storageMode === "local") return;
+
+      // If the row has no DB id yet, nothing to sync server-side.
+      if (!target.id) {
+        console.warn("[TodayPanel] edit skipped sync: task has no DB id yet.");
+        return;
+      }
+
+      try {
+        await renameTask(userId, target.id, trimmed);
+      } catch (err) {
+        if (isSupabaseSetupError(err)) {
+          console.warn("[TodayPanel] edit now using local-only mode.");
+          setStorageMode("local");
+          setNotice(
+            "Supabase tables are not ready yet, so Today's tasks are running in local-only mode in this browser."
+          );
+        } else {
+          console.error("[TodayPanel] edit failed:", err instanceof Error ? err.message : err);
+          setError(getUserFacingError(err, "Couldn't save the edit. Please try again."));
+          // Roll back optimistic rename
+          setTasks((prev) =>
+            prev.map((t, i) => (i === index ? { ...t, name: previousName } : t))
+          );
+        }
+      }
+    },
+    [editingValue, storageMode, tasks, userId, cancelEditing]
+  );
   if (!isLoaded) {
     return (
       <div className="bg-white rounded-xl border border-pink-200 p-4 flex items-center justify-center min-h-[120px]">
@@ -439,43 +519,94 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
       ) : null;
     }
 
+    const isEditing = editingIndex === index;
+
     return (
       <li
         key={task.id ?? `temp-${task.name}-${index}`}
         className="flex items-center gap-2 group rounded-lg hover:bg-pink-50 px-1.5 py-1 transition-colors"
       >
-        <button
-          onClick={() => handleToggle(index)}
-          className="flex items-center gap-2 flex-1 text-left"
-        >
-          {task.completed ? (
-            <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 fill-pink-100" />
-          ) : (
-            <Circle className="w-4 h-4 text-pink-300 shrink-0" />
-          )}
-          <span className="flex flex-col">
-            <span
-              className={`text-xs leading-tight select-none transition-colors ${
-                task.completed
-                  ? "text-pink-500 line-through decoration-pink-300"
-                  : "text-pink-600"
-              }`}
+        {isEditing ? (
+          /* ─── Inline edit mode ─── */
+          <div className="flex items-center gap-1.5 flex-1">
+            <input
+              type="text"
+              value={editingValue}
+              autoFocus
+              onChange={(e) => setEditingValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveEditing(index);
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelEditing();
+                }
+              }}
+              className="flex-1 text-xs border border-pink-300 focus:border-pink-500 focus:outline-none rounded-md px-2 py-1 text-pink-700"
+            />
+            <button
+              onClick={() => saveEditing(index)}
+              className="text-green-500 hover:text-green-600 shrink-0 transition-colors"
+              aria-label="Save edit"
+              title="Save"
             >
-              {task.name}
-            </span>
-            {task.taskType === "deadline" && dueLabel && (
-              <span className={`text-[9px] mt-0.5 ${dueClass}`}>{dueLabel}</span>
-            )}
-          </span>
-        </button>
-        <button
-          onClick={() => handleDelete(index)}
-          className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
-          aria-label={`Delete ${task.name}`}
-          title="Remove task"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              onClick={cancelEditing}
+              className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
+              aria-label="Cancel edit"
+              title="Cancel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          /* ─── Display mode ─── */
+          <>
+            <button
+              onClick={(e) => handleToggle(index, e)}
+              className="flex items-center gap-2 flex-1 text-left"
+            >
+              {task.completed ? (
+                <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 fill-pink-100" />
+              ) : (
+                <Circle className="w-4 h-4 text-pink-300 shrink-0" />
+              )}
+              <span className="flex flex-col">
+                <span
+                  className={`text-xs leading-tight select-none transition-colors ${
+                    task.completed
+                      ? "text-pink-500 line-through decoration-pink-300"
+                      : "text-pink-600"
+                  }`}
+                >
+                  {task.name}
+                </span>
+                {task.taskType === "deadline" && dueLabel && (
+                  <span className={`text-[9px] mt-0.5 ${dueClass}`}>{dueLabel}</span>
+                )}
+              </span>
+            </button>
+            <button
+              onClick={() => startEditing(index, task.name)}
+              className="text-pink-300 hover:text-pink-600 shrink-0 transition-colors"
+              aria-label={`Edit ${task.name}`}
+              title="Edit task"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => handleDelete(index)}
+              className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
+              aria-label={`Delete ${task.name}`}
+              title="Remove task"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
       </li>
     );
   };

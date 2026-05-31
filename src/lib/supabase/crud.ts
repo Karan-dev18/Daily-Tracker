@@ -541,6 +541,49 @@ export async function deleteTask(
   }
 }
 
+/**
+ * Rename a task (edit its task_name) by primary-key id, scoped to the
+ * authenticated user. Used for inline editing in the UI.
+ *
+ * The .eq("user_id", ...) filter plus the RLS UPDATE policy ensures a user can
+ * only edit their own rows. Returns the updated row so the UI can confirm.
+ */
+export async function renameTask(userId: string, taskId: string, newName: string) {
+  throwIfKnownMissingTable("tasks");
+
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    throw new Error("Task name cannot be empty.");
+  }
+
+  const verifiedUserId = await verifySession(userId);
+  const supabase = getClient();
+
+  console.log("[renameTask] updating:", { taskId, newName: trimmed });
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ task_name: trimmed })
+    .eq("id", taskId)
+    .eq("user_id", verifiedUserId)
+    .select("id, task_name, is_completed, category, date, task_type, due_date")
+    .single();
+
+  if (error) {
+    console.log("[renameTask] supabase error:", error);
+    logSupabaseIssue("renameTask failed", error, "tasks");
+
+    // 23505 = unique_violation → a task with that name already exists for the day
+    if (error.code === "23505") {
+      throw new Error("A task with that name already exists for this day.");
+    }
+    throw new Error(formatSupabaseCrudError("Rename task", error, "tasks"));
+  }
+
+  console.log("[renameTask] update success:", data);
+  return data;
+}
+
 // ════════════════════════════════════════════════════════
 //  HABITS  CRUD
 // ════════════════════════════════════════════════════════

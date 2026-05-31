@@ -11,6 +11,7 @@ import TaskProgressOverview from "@/components/dashboard/TaskProgressOverview";
 import DayColumn from "@/components/dashboard/DayColumn";
 import HabitTracker from "@/components/dashboard/HabitTracker";
 import TodayPanel from "@/components/dashboard/TodayPanel";
+import { celebrate } from "@/lib/confetti";
 import {
   dailyData as initialDailyData,
   habitsData as initialHabitsData,
@@ -255,6 +256,11 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
         task.completed = !task.completed;
         tasks[taskIndex] = task;
         day.tasks = tasks;
+
+        // 🎉 Celebrate when a task transitions to completed.
+        if (task.completed) {
+          celebrate();
+        }
 
         // Recompute stats
         const stats = recalcDayStats(tasks);
