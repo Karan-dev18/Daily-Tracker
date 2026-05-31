@@ -242,7 +242,7 @@ export async function fetchTasksForDate(userId: string, date: string) {
   const supabase = getClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("id, task_name, is_completed, category, date")
+    .select("id, task_name, is_completed, category, date, task_type, due_date")
     .eq("user_id", verifiedUserId)
     .eq("date", date)
     .order("created_at", { ascending: true });
@@ -291,11 +291,15 @@ export async function upsertTasks(
 export interface CarriedTask {
   task_name: string;
   category: string | null;
+  task_type: TaskType;
+  due_date: string | null;
+  is_completed: boolean;
 }
 
 /**
  * Find the most recent day BEFORE `beforeDate` that has at least one task,
- * and return that day's date plus its tasks.
+ * and return that day's date plus its tasks (including type / completion so
+ * the caller can decide what to carry over).
  *
  * "Most recent active day" = the largest date strictly less than `beforeDate`
  * for which the user has any tasks logged. Returns null if there is no
@@ -329,10 +333,10 @@ export async function fetchMostRecentTasksBefore(
     return null;
   }
 
-  // 2. Pull all tasks for that date.
+  // 2. Pull all tasks for that date, including type/completion/due_date.
   const { data: tasks, error: tasksErr } = await supabase
     .from("tasks")
-    .select("task_name, category")
+    .select("task_name, category, task_type, due_date, is_completed")
     .eq("user_id", verifiedUserId)
     .eq("date", recent.date)
     .order("created_at", { ascending: true });
@@ -344,39 +348,59 @@ export async function fetchMostRecentTasksBefore(
     );
   }
 
-  return { date: recent.date, tasks: tasks || [] };
+  return { date: recent.date, tasks: (tasks as CarriedTask[]) || [] };
 }
 
 /**
- * Copy the most recent previous day's tasks into `targetDate`, with completion
- * reset to false. Creates NEW rows for the target date — historical rows are
- * untouched. Skips rows that already exist for the target date (via upsert).
+ * Carry over UNFINISHED DEADLINES from the most recent previous day into
+ * `targetDate`.
+ *
+ * Rules:
+ *   - Only tasks with task_type = 'deadline' AND is_completed = false are copied.
+ *   - 'recurring' tasks are intentionally left behind (they do not carry over).
+ *   - Completed deadlines are left behind (they're done).
+ *   - due_date is preserved; completion is reset to false on the new day.
+ *
+ * Creates NEW rows for the target date — historical rows are untouched.
+ * Existing rows for the target date are not clobbered (ignoreDuplicates).
  *
  * Returns the list of task names that were carried over (empty array if there
- * was no previous day to copy from).
+ * was nothing to carry).
  */
 export async function copyPreviousDayTasks(
   userId: string,
   targetDate: string // ISO date for "today"
 ): Promise<string[]> {
   throwIfKnownMissingTable("tasks");
-  console.log("[copyPreviousDayTasks] Carrying over into:", targetDate);
+  console.log("[copyPreviousDayTasks] Carrying over deadlines into:", targetDate);
 
   const verifiedUserId = await verifySession(userId);
   const previous = await fetchMostRecentTasksBefore(verifiedUserId, targetDate);
 
   if (!previous || previous.tasks.length === 0) {
-    console.log("[copyPreviousDayTasks] Nothing to copy.");
+    console.log("[copyPreviousDayTasks] No previous day to carry from.");
+    return [];
+  }
+
+  // Only unfinished deadlines carry over. Recurring + completed are skipped.
+  const carryOver = previous.tasks.filter(
+    (t) => t.task_type === "deadline" && !t.is_completed
+  );
+
+  if (carryOver.length === 0) {
+    console.log("[copyPreviousDayTasks] No unfinished deadlines to carry over.");
     return [];
   }
 
   const supabase = getClient();
-  const rows = previous.tasks.map((t) => ({
+  const rows = carryOver.map((t) => ({
     user_id: verifiedUserId,
     date: targetDate,
     task_name: t.task_name,
-    is_completed: false,        // reset completion
+    is_completed: false,            // reset completion on the new day
     category: t.category ?? "general",
+    task_type: "deadline" as const, // carried items remain deadlines
+    due_date: t.due_date,           // preserve the original due date
   }));
 
   const { error } = await supabase.from("tasks").upsert(rows, {
@@ -389,8 +413,10 @@ export async function copyPreviousDayTasks(
     throw new Error(formatSupabaseCrudError("Carry-over", error, "tasks"));
   }
 
-  console.log(`[copyPreviousDayTasks] Copied ${rows.length} task(s) from ${previous.date}.`);
-  return previous.tasks.map((t) => t.task_name);
+  console.log(
+    `[copyPreviousDayTasks] Carried ${rows.length} deadline(s) from ${previous.date}.`
+  );
+  return carryOver.map((t) => t.task_name);
 }
 
 /**

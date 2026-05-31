@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { CheckCircle2, Circle, Plus, Trash2, CopyPlus, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Trash2, CopyPlus, Loader2, CalendarClock, Repeat } from "lucide-react";
 import {
   fetchTasksForDate,
   copyPreviousDayTasks,
@@ -10,15 +10,18 @@ import {
   toggleTaskCompletion,
   isSupabaseSetupError,
 } from "@/lib/supabase/crud";
+import type { TaskType } from "@/lib/types/database";
 
 // ════════════════════════════════════════════════════════
 //  Types
 // ════════════════════════════════════════════════════════
 
 interface TodayTask {
-  id: string | null;   // DB primary key; null until the insert resolves
+  id: string | null;       // DB primary key; null until the insert resolves
   name: string;
   completed: boolean;
+  taskType: TaskType;      // 'recurring' | 'deadline'
+  dueDate: string | null;  // ISO date for deadlines, else null
 }
 
 interface TodayPanelProps {
@@ -67,10 +70,13 @@ function readLocalTasks(userId: string, date: string): TodayTask[] {
           typeof task.name === "string" &&
           typeof task.completed === "boolean"
         ) {
+          const taskType: TaskType = task.taskType === "deadline" ? "deadline" : "recurring";
           return {
             id: task.id,
             name: task.name,
             completed: task.completed,
+            taskType,
+            dueDate: typeof task.dueDate === "string" ? task.dueDate : null,
           };
         }
         return null;
@@ -121,6 +127,8 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
+  const [newTaskType, setNewTaskType] = useState<TaskType>("recurring");
+  const [newDueDate, setNewDueDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("remote");
@@ -141,7 +149,13 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
       try {
         const rows = await fetchTasksForDate(userId, todayDate);
         setTasks(
-          rows.map((r) => ({ id: r.id, name: r.task_name, completed: r.is_completed }))
+          rows.map((r) => ({
+            id: r.id,
+            name: r.task_name,
+            completed: r.is_completed,
+            taskType: (r.task_type as TaskType) ?? "recurring",
+            dueDate: r.due_date ?? null,
+          }))
         );
         setNotice(null);
       } catch (err) {
@@ -166,21 +180,27 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
 
   const hasNoTasks = isLoaded && tasks.length === 0;
 
-  // ─── Copy yesterday's routine ───
+  // ─── Copy yesterday's routine (unfinished deadlines only) ───
   const handleCopyYesterday = useCallback(async () => {
     setIsCopying(true);
     setError(null);
     try {
       if (storageMode === "local") {
         const previousTasks = findMostRecentLocalTasksBefore(userId, todayDate);
-        if (!previousTasks || previousTasks.length === 0) {
-          setError("No previous day with tasks to copy from yet.");
+        // Mirror the DB rule: only carry unfinished deadlines.
+        const carryOver = (previousTasks ?? []).filter(
+          (task) => task.taskType === "deadline" && !task.completed
+        );
+        if (carryOver.length === 0) {
+          setError("No unfinished deadlines to carry over from a previous day.");
         } else {
           setTasks(
-            previousTasks.map((task) => ({
+            carryOver.map((task) => ({
               id: crypto.randomUUID(),
               name: task.name,
               completed: false,
+              taskType: "deadline",
+              dueDate: task.dueDate,
             }))
           );
         }
@@ -189,12 +209,18 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
 
       const copied = await copyPreviousDayTasks(userId, todayDate);
       if (copied.length === 0) {
-        setError("No previous day with tasks to copy from yet.");
+        setError("No unfinished deadlines to carry over from a previous day.");
       } else {
         // Re-fetch so we get the real DB ids for the newly inserted rows
         const rows = await fetchTasksForDate(userId, todayDate);
         setTasks(
-          rows.map((r) => ({ id: r.id, name: r.task_name, completed: r.is_completed }))
+          rows.map((r) => ({
+            id: r.id,
+            name: r.task_name,
+            completed: r.is_completed,
+            taskType: (r.task_type as TaskType) ?? "recurring",
+            dueDate: r.due_date ?? null,
+          }))
         );
       }
     } catch (err) {
@@ -257,22 +283,31 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
         return;
       }
 
+      // Deadlines may carry an optional due date; recurring tasks never do.
+      const taskType = newTaskType;
+      const dueDate = taskType === "deadline" && newDueDate ? newDueDate : null;
+
       setError(null);
       setNewTaskName("");
+      setNewDueDate("");
+      setNewTaskType("recurring");
 
       if (storageMode === "local") {
         setTasks((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), name, completed: false },
+          { id: crypto.randomUUID(), name, completed: false, taskType, dueDate },
         ]);
         return;
       }
 
       // Optimistic add with a temporary id of null
-      setTasks((prev) => [...prev, { id: null, name, completed: false }]);
+      setTasks((prev) => [
+        ...prev,
+        { id: null, name, completed: false, taskType, dueDate },
+      ]);
 
       try {
-        const created = await addTask(userId, todayDate, name);
+        const created = await addTask(userId, todayDate, name, { taskType, dueDate });
         // Patch in the real DB id so the row can be deleted by id later
         if (created?.id) {
           setTasks((prev) =>
@@ -291,7 +326,13 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
           setTasks((prev) =>
             prev.map((task) =>
               task.id === null && task.name === name
-                ? { id: crypto.randomUUID(), name: task.name, completed: task.completed }
+                ? {
+                    id: crypto.randomUUID(),
+                    name: task.name,
+                    completed: task.completed,
+                    taskType: task.taskType,
+                    dueDate: task.dueDate,
+                  }
                 : task
             )
           );
@@ -303,7 +344,7 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
         }
       }
     },
-    [newTaskName, storageMode, tasks, userId, todayDate]
+    [newTaskName, newTaskType, newDueDate, storageMode, tasks, userId, todayDate]
   );
 
   // ─── Delete a task by id (today only — historical data untouched) ───
@@ -421,14 +462,34 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
                   ) : (
                     <Circle className="w-4 h-4 text-pink-300 shrink-0" />
                   )}
-                  <span
-                    className={`text-xs leading-tight select-none transition-colors ${
-                      task.completed
-                        ? "text-pink-500 line-through decoration-pink-300"
-                        : "text-pink-600"
-                    }`}
-                  >
-                    {task.name}
+                  <span className="flex flex-col">
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className={`text-xs leading-tight select-none transition-colors ${
+                          task.completed
+                            ? "text-pink-500 line-through decoration-pink-300"
+                            : "text-pink-600"
+                        }`}
+                      >
+                        {task.name}
+                      </span>
+                      {task.taskType === "deadline" ? (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 shrink-0">
+                          <CalendarClock className="w-2.5 h-2.5" />
+                          Deadline
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-pink-500 bg-pink-50 border border-pink-200 rounded px-1 py-0.5 shrink-0">
+                          <Repeat className="w-2.5 h-2.5" />
+                          Recurring
+                        </span>
+                      )}
+                    </span>
+                    {task.taskType === "deadline" && task.dueDate && (
+                      <span className="text-[9px] text-rose-400 mt-0.5">
+                        Due {formatDisplayDate(task.dueDate)}
+                      </span>
+                    )}
                   </span>
                 </button>
                 <button
@@ -445,22 +506,68 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
         )}
 
         {/* Add new task — always available */}
-        <form onSubmit={handleAdd} className="flex items-center gap-2 pt-1">
-          <input
-            type="text"
-            value={newTaskName}
-            onChange={(e) => setNewTaskName(e.target.value)}
-            placeholder="Add a task for today..."
-            className="flex-1 text-xs border border-pink-200 focus:border-pink-400 focus:outline-none rounded-lg px-3 py-2 text-pink-700 placeholder:text-pink-300"
-          />
-          <button
-            type="submit"
-            disabled={!newTaskName.trim()}
-            className="flex items-center justify-center bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg w-8 h-8 shrink-0 transition-colors"
-            aria-label="Add task"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+        <form onSubmit={handleAdd} className="space-y-2 pt-1">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newTaskName}
+              onChange={(e) => setNewTaskName(e.target.value)}
+              placeholder="Add a task for today..."
+              className="flex-1 text-xs border border-pink-200 focus:border-pink-400 focus:outline-none rounded-lg px-3 py-2 text-pink-700 placeholder:text-pink-300"
+            />
+            <button
+              type="submit"
+              disabled={!newTaskName.trim()}
+              className="flex items-center justify-center bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg w-8 h-8 shrink-0 transition-colors"
+              aria-label="Add task"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Task type selector */}
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-pink-200 overflow-hidden text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setNewTaskType("recurring")}
+                aria-pressed={newTaskType === "recurring"}
+                className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors ${
+                  newTaskType === "recurring"
+                    ? "bg-pink-500 text-white"
+                    : "bg-white text-pink-500 hover:bg-pink-50"
+                }`}
+              >
+                <Repeat className="w-3 h-3" />
+                Recurring
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewTaskType("deadline")}
+                aria-pressed={newTaskType === "deadline"}
+                className={`flex items-center gap-1 px-2.5 py-1.5 transition-colors border-l border-pink-200 ${
+                  newTaskType === "deadline"
+                    ? "bg-rose-500 text-white"
+                    : "bg-white text-rose-500 hover:bg-rose-50"
+                }`}
+              >
+                <CalendarClock className="w-3 h-3" />
+                Deadline
+              </button>
+            </div>
+
+            {/* Optional due date — only for deadlines */}
+            {newTaskType === "deadline" && (
+              <input
+                type="date"
+                value={newDueDate}
+                min={todayDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+                className="text-xs border border-rose-200 focus:border-rose-400 focus:outline-none rounded-lg px-2 py-1.5 text-rose-600"
+                aria-label="Due date (optional)"
+              />
+            )}
+          </div>
         </form>
       </div>
     </div>
