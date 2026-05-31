@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { CheckCircle2, Circle, Plus, Trash2, CopyPlus, Loader2, CalendarClock, Repeat } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Trash2, CopyPlus, Loader2, CalendarClock, Repeat, AlertTriangle } from "lucide-react";
 import {
   fetchTasksForDate,
   copyPreviousDayTasks,
@@ -38,6 +38,19 @@ type StorageMode = "remote" | "local";
 function formatDisplayDate(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}.${m}.${y}`;
+}
+
+type DeadlineStatus = "none" | "today" | "overdue" | "upcoming";
+
+/**
+ * ISO date strings (YYYY-MM-DD) compare correctly with string comparison,
+ * so we can classify a due date relative to today without Date parsing.
+ */
+function getDeadlineStatus(dueDate: string | null, todayDate: string): DeadlineStatus {
+  if (!dueDate) return "none";
+  if (dueDate === todayDate) return "today";
+  if (dueDate < todayDate) return "overdue";
+  return "upcoming";
 }
 
 function getUserFacingError(err: unknown, fallback: string): string {
@@ -399,6 +412,73 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
   }
 
   const doneCount = tasks.filter((t) => t.completed).length;
+  const totalCount = tasks.length;
+  const progressPercent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+  // Split tasks into the two Organizer sections, preserving each task's
+  // original index so toggle/delete (which work by index) stay correct.
+  const indexedTasks = tasks.map((task, index) => ({ task, index }));
+  const recurringTasks = indexedTasks.filter(({ task }) => task.taskType === "recurring");
+  const deadlineTasks = indexedTasks.filter(({ task }) => task.taskType === "deadline");
+
+  // Render a single task row (shared by both sections).
+  const renderTaskRow = ({ task, index }: { task: TodayTask; index: number }) => {
+    const status = getDeadlineStatus(task.dueDate, todayDate);
+
+    let dueClass = "text-rose-400";
+    let dueLabel: React.ReactNode = task.dueDate ? `Due ${formatDisplayDate(task.dueDate)}` : null;
+    if (status === "today") {
+      dueClass = "text-orange-500 font-bold";
+      dueLabel = task.dueDate ? `Due today (${formatDisplayDate(task.dueDate)})` : null;
+    } else if (status === "overdue") {
+      dueClass = "text-red-600 font-bold";
+      dueLabel = task.dueDate ? (
+        <span className="inline-flex items-center gap-0.5">
+          <AlertTriangle className="w-2.5 h-2.5" /> Overdue · {formatDisplayDate(task.dueDate)}
+        </span>
+      ) : null;
+    }
+
+    return (
+      <li
+        key={task.id ?? `temp-${task.name}-${index}`}
+        className="flex items-center gap-2 group rounded-lg hover:bg-pink-50 px-1.5 py-1 transition-colors"
+      >
+        <button
+          onClick={() => handleToggle(index)}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          {task.completed ? (
+            <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 fill-pink-100" />
+          ) : (
+            <Circle className="w-4 h-4 text-pink-300 shrink-0" />
+          )}
+          <span className="flex flex-col">
+            <span
+              className={`text-xs leading-tight select-none transition-colors ${
+                task.completed
+                  ? "text-pink-500 line-through decoration-pink-300"
+                  : "text-pink-600"
+              }`}
+            >
+              {task.name}
+            </span>
+            {task.taskType === "deadline" && dueLabel && (
+              <span className={`text-[9px] mt-0.5 ${dueClass}`}>{dueLabel}</span>
+            )}
+          </span>
+        </button>
+        <button
+          onClick={() => handleDelete(index)}
+          className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
+          aria-label={`Delete ${task.name}`}
+          title="Remove task"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </li>
+    );
+  };
 
   return (
     <div className="bg-white rounded-xl border border-pink-200 overflow-hidden">
@@ -408,9 +488,9 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
           <p className="text-sm font-bold">Today</p>
           <p className="text-[11px] opacity-90">{formatDisplayDate(todayDate)}</p>
         </div>
-        {tasks.length > 0 && (
+        {totalCount > 0 && (
           <span className="text-xs font-semibold bg-white/20 rounded-full px-2.5 py-1">
-            {doneCount}/{tasks.length} done
+            {doneCount}/{totalCount} done
           </span>
         )}
       </div>
@@ -426,6 +506,42 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
           <p className="text-xs text-rose-500 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
             {error}
           </p>
+        )}
+
+        {/* ─── Today's Task Progress Overview ─── */}
+        {totalCount > 0 && (
+          <div className="flex items-center gap-3 bg-pink-50/60 border border-pink-100 rounded-xl p-3">
+            {/* Mini pie */}
+            <div className="relative w-14 h-14 shrink-0">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#fce7f3" strokeWidth="5" />
+                <circle
+                  cx="18" cy="18" r="15.5" fill="none" stroke="#ec4899" strokeWidth="5"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(progressPercent / 100) * 2 * Math.PI * 15.5} ${2 * Math.PI * 15.5}`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[11px] font-bold text-pink-600">{progressPercent}%</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-bold text-pink-700">Today&apos;s Progress</p>
+              <p className="text-[11px] text-pink-500">
+                {doneCount} of {totalCount} tasks completed
+              </p>
+              <div className="mt-1.5 h-2 bg-pink-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progressPercent}%`,
+                    background: "linear-gradient(90deg, #f9a8d4, #ec4899)",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Empty state: Copy Yesterday's Routine */}
@@ -446,63 +562,41 @@ export default function TodayPanel({ userId, todayDate }: TodayPanelProps) {
             </button>
           </div>
         ) : (
-          /* Task list */
-          <ul className="space-y-1.5">
-            {tasks.map((task, i) => (
-              <li
-                key={task.id ?? `temp-${task.name}-${i}`}
-                className="flex items-center gap-2 group rounded-lg hover:bg-pink-50 px-1.5 py-1 transition-colors"
-              >
-                <button
-                  onClick={() => handleToggle(i)}
-                  className="flex items-center gap-2 flex-1 text-left"
-                >
-                  {task.completed ? (
-                    <CheckCircle2 className="w-4 h-4 text-pink-400 shrink-0 fill-pink-100" />
-                  ) : (
-                    <Circle className="w-4 h-4 text-pink-300 shrink-0" />
-                  )}
-                  <span className="flex flex-col">
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className={`text-xs leading-tight select-none transition-colors ${
-                          task.completed
-                            ? "text-pink-500 line-through decoration-pink-300"
-                            : "text-pink-600"
-                        }`}
-                      >
-                        {task.name}
-                      </span>
-                      {task.taskType === "deadline" ? (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 shrink-0">
-                          <CalendarClock className="w-2.5 h-2.5" />
-                          Deadline
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-pink-500 bg-pink-50 border border-pink-200 rounded px-1 py-0.5 shrink-0">
-                          <Repeat className="w-2.5 h-2.5" />
-                          Recurring
-                        </span>
-                      )}
-                    </span>
-                    {task.taskType === "deadline" && task.dueDate && (
-                      <span className="text-[9px] text-rose-400 mt-0.5">
-                        Due {formatDisplayDate(task.dueDate)}
-                      </span>
-                    )}
-                  </span>
-                </button>
-                <button
-                  onClick={() => handleDelete(i)}
-                  className="text-pink-300 hover:text-rose-500 shrink-0 transition-colors"
-                  aria-label={`Delete ${task.name}`}
-                  title="Remove task"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-3">
+            {/* ─── Recurring Habits ─── */}
+            <div className="rounded-xl border border-pink-200 overflow-hidden">
+              <div className="bg-pink-100/70 px-3 py-1.5 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-pink-700">🔄 Recurring Habits</h4>
+                <span className="text-[10px] text-pink-500 font-semibold">
+                  {recurringTasks.filter(({ task }) => task.completed).length}/{recurringTasks.length}
+                </span>
+              </div>
+              {recurringTasks.length > 0 ? (
+                <ul className="p-2 space-y-1.5">{recurringTasks.map(renderTaskRow)}</ul>
+              ) : (
+                <p className="text-[11px] text-pink-300 px-3 py-3 text-center">
+                  No recurring habits today.
+                </p>
+              )}
+            </div>
+
+            {/* ─── Critical Deadlines ─── */}
+            <div className="rounded-xl border border-rose-200 overflow-hidden">
+              <div className="bg-rose-100/70 px-3 py-1.5 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-rose-700">🚨 Critical Deadlines</h4>
+                <span className="text-[10px] text-rose-500 font-semibold">
+                  {deadlineTasks.filter(({ task }) => task.completed).length}/{deadlineTasks.length}
+                </span>
+              </div>
+              {deadlineTasks.length > 0 ? (
+                <ul className="p-2 space-y-1.5">{deadlineTasks.map(renderTaskRow)}</ul>
+              ) : (
+                <p className="text-[11px] text-rose-300 px-3 py-3 text-center">
+                  No deadlines today. Nice and clear!
+                </p>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Add new task — always available */}

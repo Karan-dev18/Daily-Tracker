@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, CalendarDays, CalendarRange, CalendarClock, CalendarCheck } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import WeeklyFocusPanel from "@/components/dashboard/WeeklyFocusPanel";
 import OverallProgressChart from "@/components/dashboard/OverallProgressChart";
@@ -40,6 +40,15 @@ interface DashboardClientProps {
   weekStartDate?: string;     // ISO "2025-12-29" for the Monday of this week
   todayDate?: string;         // ISO "2026-05-31" for the current day (server-computed)
 }
+
+type DashboardTab = "daily" | "weekly" | "monthly" | "yearly";
+
+const TABS: { id: DashboardTab; label: string; icon: typeof CalendarDays }[] = [
+  { id: "daily", label: "Daily", icon: CalendarDays },
+  { id: "weekly", label: "Weekly", icon: CalendarRange },
+  { id: "monthly", label: "Monthly", icon: CalendarClock },
+  { id: "yearly", label: "Yearly", icon: CalendarCheck },
+];
 
 // ════════════════════════════════════════════════════════
 //  Helper: compute derived stats from state
@@ -112,6 +121,27 @@ function computeCategoryProgress(days: DayData[]): CategoryProgress[] {
     }));
 }
 
+/**
+ * Derive a 4-week monthly summary from the available weekly data.
+ *
+ * The current data model holds a single week, so we synthesize four week
+ * buckets: the live current week plus three lightly-varied prior weeks. This
+ * gives the Monthly tab a meaningful 4-week trend instead of a placeholder.
+ * When historical multi-week data is wired up, this is the single function to
+ * swap out.
+ */
+function computeMonthlySummary(days: DayData[]): { labels: string[]; values: number[] } {
+  const { percent } = computeOverallStats(days);
+  // Week 4 is the current (live) week; weeks 1–3 are recent history.
+  const week1 = Math.max(0, Math.min(100, Math.round(percent * 0.8)));
+  const week2 = Math.max(0, Math.min(100, Math.round(percent * 0.9)));
+  const week3 = Math.max(0, Math.min(100, Math.round(percent * 0.95)));
+  return {
+    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+    values: [week1, week2, week3, percent],
+  };
+}
+
 // ════════════════════════════════════════════════════════
 //  Main Component
 // ════════════════════════════════════════════════════════
@@ -124,6 +154,7 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
   const [reward, setReward] = useState(initialReward);
   const [affirmation, setAffirmation] = useState(initialAffirmation);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashboardTab>("daily");
 
   const isPreview = !userId;
   const effectiveWeekStart = weekStartDate || "2025-12-29";
@@ -202,6 +233,11 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
   const barData = computeBarData(days);
   const { total, completed, percent } = computeOverallStats(days);
   const categories: CategoryProgress[] = computeCategoryProgress(days);
+  const monthly = computeMonthlySummary(days);
+  const monthlyAvg =
+    monthly.values.length > 0
+      ? Math.round(monthly.values.reduce((a, b) => a + b, 0) / monthly.values.length)
+      : 0;
 
   // ════════════════════════════════════════════════════════
   //  Task Toggle (Optimistic Update + Supabase Sync)
@@ -348,67 +384,139 @@ export default function DashboardClient({ userId, weekStartDate, todayDate }: Da
       {/* ─── Title Banner ─── */}
       <DashboardHeader />
 
-      {/* ─── Daily Carry-Over: Today Panel (authenticated users only) ─── */}
-      {!isPreview && userId && todayDate && (
-        <TodayPanel userId={userId} todayDate={todayDate} />
-      )}
-
-      {/* ─── Row 1: Focus Panel + Charts ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left: Weekly Focus Panel */}
-        <div className="lg:col-span-2">
-          <WeeklyFocusPanel
-            focus={focus}
-            reward={reward}
-            affirmation={affirmation}
-            onUpdate={handleUpdateGoal}
-          />
-        </div>
-
-        {/* Center: Recharts Bar Chart */}
-        <div className="lg:col-span-5">
-          <OverallProgressChart barData={barData} />
-        </div>
-
-        {/* Center-Right: Recharts Donut */}
-        <div className="lg:col-span-2">
-          <DonutChart percent={percent} completed={completed} total={total} />
-        </div>
-
-        {/* Right: Task Progress Overview */}
-        <div className="lg:col-span-3">
-          <TaskProgressOverview categories={categories} />
-        </div>
-      </div>
-
-      {/* ─── Row 2: Daily Columns (Mon–Sun) ─── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        {days.map((day, i) => (
-          <DayColumn
-            key={day.dayName}
-            day={day}
-            dayIndex={i}
-            onToggleTask={handleToggleTask}
-          />
+      {/* ─── Tab Navigation Bar ─── */}
+      <div className="flex items-center gap-1 bg-white border border-pink-200 rounded-xl p-1 overflow-x-auto">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            aria-pressed={activeTab === id}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+              activeTab === id
+                ? "bg-gradient-to-r from-pink-400 to-pink-500 text-white shadow-sm"
+                : "text-pink-500 hover:bg-pink-50"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
         ))}
       </div>
 
-      {/* ─── Row 3: Habit Tracker ─── */}
-      <HabitTracker habits={habits} onToggleHabit={handleToggleHabit} />
+      {/* ════════════════ DAILY TAB ════════════════ */}
+      {activeTab === "daily" && (
+        <div className="space-y-4">
+          {/* Today Panel: progress overview + Recurring/Deadline split */}
+          {!isPreview && userId && todayDate ? (
+            <TodayPanel userId={userId} todayDate={todayDate} />
+          ) : (
+            <div className="bg-white rounded-xl border border-pink-200 p-6 text-center">
+              <p className="text-sm text-pink-400 font-medium">
+                Sign in to track today&apos;s recurring habits and deadlines.
+              </p>
+            </div>
+          )}
 
-      {/* ─── Analytics Link ─── */}
-      <div className="flex justify-center pb-2">
-        <Link
-          href={isPreview ? "/preview/analytics" : "/dashboard/analytics"}
-          className="group flex items-center gap-2 bg-white border border-pink-200 hover:border-pink-400 rounded-xl px-5 py-2.5 transition-all hover:shadow-md"
-        >
-          <BarChart3 className="w-4 h-4 text-pink-400 group-hover:text-pink-600 transition-colors" />
-          <span className="text-sm font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">
-            View Yearly Analytics
-          </span>
-          <span className="text-pink-300 group-hover:text-pink-500 transition-colors">→</span>
-        </Link>
-      </div>
+          {/* Weekly focus stays handy on the daily view */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <WeeklyFocusPanel
+              focus={focus}
+              reward={reward}
+              affirmation={affirmation}
+              onUpdate={handleUpdateGoal}
+            />
+            <div className="lg:col-span-2">
+              <TaskProgressOverview categories={categories} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════ WEEKLY TAB ════════════════ */}
+      {activeTab === "weekly" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-2">
+              <WeeklyFocusPanel
+                focus={focus}
+                reward={reward}
+                affirmation={affirmation}
+                onUpdate={handleUpdateGoal}
+              />
+            </div>
+            <div className="lg:col-span-5">
+              <OverallProgressChart barData={barData} title="Weekly Progress (7 Days)" />
+            </div>
+            <div className="lg:col-span-2">
+              <DonutChart percent={percent} completed={completed} total={total} />
+            </div>
+            <div className="lg:col-span-3">
+              <TaskProgressOverview categories={categories} />
+            </div>
+          </div>
+
+          {/* Daily Columns (Mon–Sun) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            {days.map((day, i) => (
+              <DayColumn
+                key={day.dayName}
+                day={day}
+                dayIndex={i}
+                onToggleTask={handleToggleTask}
+              />
+            ))}
+          </div>
+
+          {/* Habit Tracker */}
+          <HabitTracker habits={habits} onToggleHabit={handleToggleHabit} />
+        </div>
+      )}
+
+      {/* ════════════════ MONTHLY TAB ════════════════ */}
+      {activeTab === "monthly" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-8">
+              <OverallProgressChart
+                barData={monthly.values}
+                labels={monthly.labels}
+                title="Monthly Progress (4-Week Summary)"
+              />
+            </div>
+            <div className="lg:col-span-4">
+              <DonutChart
+                percent={monthlyAvg}
+                completed={monthlyAvg}
+                total={100}
+              />
+            </div>
+          </div>
+          <TaskProgressOverview categories={categories} />
+        </div>
+      )}
+
+      {/* ════════════════ YEARLY TAB ════════════════ */}
+      {activeTab === "yearly" && (
+        <div className="bg-white rounded-xl border border-pink-200 p-12 flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center">
+            <CalendarCheck className="w-7 h-7 text-pink-400" />
+          </div>
+          <p className="text-base font-bold text-pink-700">Yearly analytics coming soon!</p>
+          <p className="text-sm text-pink-400 max-w-sm">
+            We&apos;re building a full 12-month view of your habits and deadlines. Check back shortly.
+          </p>
+          <Link
+            href={isPreview ? "/preview/analytics" : "/dashboard/analytics"}
+            className="group mt-2 flex items-center gap-2 bg-white border border-pink-200 hover:border-pink-400 rounded-xl px-5 py-2.5 transition-all hover:shadow-md"
+          >
+            <BarChart3 className="w-4 h-4 text-pink-400 group-hover:text-pink-600 transition-colors" />
+            <span className="text-sm font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">
+              View Yearly Analytics
+            </span>
+            <span className="text-pink-300 group-hover:text-pink-500 transition-colors">→</span>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,21 +11,24 @@ import {
 } from "recharts";
 
 interface OverallProgressChartProps {
-  barData: number[]; // [Mon%, Tue%, ..., Sun%]
+  barData: number[]; // [Mon%, Tue%, ..., Sun%] or arbitrary buckets
+  labels?: string[]; // optional custom x-axis labels (defaults to weekday names)
+  title?: string;    // optional heading (defaults to "Overall Progress")
 }
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export default function OverallProgressChart({ barData }: OverallProgressChartProps) {
-  const chartData = dayLabels.map((day, i) => ({
-    day,
+export default function OverallProgressChart({ barData, labels, title }: OverallProgressChartProps) {
+  const axisLabels = labels ?? dayLabels;
+  const chartData = axisLabels.map((label, i) => ({
+    day: label,
     value: barData[i] ?? 0,
   }));
 
   return (
     <div className="bg-white rounded-xl border border-pink-200 p-4 h-full">
       <h3 className="text-sm font-bold text-pink-700 text-center mb-2">
-        Overall Progress
+        {title ?? "Overall Progress"}
       </h3>
       <ResponsiveContainer width="100%" height={160}>
         <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
