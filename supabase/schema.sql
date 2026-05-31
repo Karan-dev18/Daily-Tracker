@@ -3,7 +3,10 @@
 -- Pink-Themed Digital Daily Productivity Tracker
 -- ============================================================
 -- Run this in Supabase SQL Editor (Dashboard → SQL Editor → New Query)
+-- Safe to rerun in the same project.
 -- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ─────────────────────────────────────────────────────────
 -- 1. PROFILES TABLE
@@ -53,8 +56,13 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   category TEXT NOT NULL DEFAULT 'general',
   task_name TEXT NOT NULL,
   is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  task_type TEXT NOT NULL DEFAULT 'recurring',  -- 'recurring' | 'deadline'
+  due_date DATE,                                -- nullable: deadline due date
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+  -- Required by the upsert(onConflict: "user_id,date,task_name") calls in crud.ts
+  UNIQUE(user_id, date, task_name)
 );
 
 COMMENT ON TABLE public.tasks IS 'Daily tasks with category and completion tracking.';
@@ -135,82 +143,101 @@ ALTER TABLE public.habits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.monthly_evaluations ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
 -- Weekly Goals policies
+DROP POLICY IF EXISTS "Users can view own weekly goals" ON public.weekly_goals;
 CREATE POLICY "Users can view own weekly goals"
   ON public.weekly_goals FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own weekly goals" ON public.weekly_goals;
 CREATE POLICY "Users can insert own weekly goals"
   ON public.weekly_goals FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own weekly goals" ON public.weekly_goals;
 CREATE POLICY "Users can update own weekly goals"
   ON public.weekly_goals FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own weekly goals" ON public.weekly_goals;
 CREATE POLICY "Users can delete own weekly goals"
   ON public.weekly_goals FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Tasks policies
+DROP POLICY IF EXISTS "Users can view own tasks" ON public.tasks;
 CREATE POLICY "Users can view own tasks"
   ON public.tasks FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own tasks" ON public.tasks;
 CREATE POLICY "Users can insert own tasks"
   ON public.tasks FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own tasks" ON public.tasks;
 CREATE POLICY "Users can update own tasks"
   ON public.tasks FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own tasks" ON public.tasks;
 CREATE POLICY "Users can delete own tasks"
   ON public.tasks FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Habits policies
+DROP POLICY IF EXISTS "Users can view own habits" ON public.habits;
 CREATE POLICY "Users can view own habits"
   ON public.habits FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own habits" ON public.habits;
 CREATE POLICY "Users can insert own habits"
   ON public.habits FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own habits" ON public.habits;
 CREATE POLICY "Users can update own habits"
   ON public.habits FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own habits" ON public.habits;
 CREATE POLICY "Users can delete own habits"
   ON public.habits FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Monthly Evaluations policies
+DROP POLICY IF EXISTS "Users can view own evaluations" ON public.monthly_evaluations;
 CREATE POLICY "Users can view own evaluations"
   ON public.monthly_evaluations FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own evaluations" ON public.monthly_evaluations;
 CREATE POLICY "Users can insert own evaluations"
   ON public.monthly_evaluations FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own evaluations" ON public.monthly_evaluations;
 CREATE POLICY "Users can update own evaluations"
   ON public.monthly_evaluations FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own evaluations" ON public.monthly_evaluations;
 CREATE POLICY "Users can delete own evaluations"
   ON public.monthly_evaluations FOR DELETE
   USING (auth.uid() = user_id);
@@ -237,6 +264,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
@@ -256,22 +284,27 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON public.profiles;
 CREATE OR REPLACE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_weekly_goals_updated_at ON public.weekly_goals;
 CREATE OR REPLACE TRIGGER update_weekly_goals_updated_at
   BEFORE UPDATE ON public.weekly_goals
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_tasks_updated_at ON public.tasks;
 CREATE OR REPLACE TRIGGER update_tasks_updated_at
   BEFORE UPDATE ON public.tasks
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_habits_updated_at ON public.habits;
 CREATE OR REPLACE TRIGGER update_habits_updated_at
   BEFORE UPDATE ON public.habits
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_monthly_evaluations_updated_at ON public.monthly_evaluations;
 CREATE OR REPLACE TRIGGER update_monthly_evaluations_updated_at
   BEFORE UPDATE ON public.monthly_evaluations
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/auth/actions";
 import { LogOut, User } from "lucide-react";
-import DashboardClient from "@/components/dashboard/DashboardClient";
+import AnalyticsClient from "@/components/analytics/AnalyticsClient";
 
 /**
- * Authenticated dashboard page.
- * Server component that fetches the user, then renders
- * the interactive DashboardClient with the userId for Supabase sync.
+ * Authenticated analytics page.
+ * Accessible at /dashboard/analytics
  */
-export default async function DashboardPage() {
+export default async function AnalyticsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,17 +16,6 @@ export default async function DashboardPage() {
     user?.user_metadata?.name ||
     user?.email?.split("@")[0] ||
     "User";
-
-  // Compute current week's Monday in ISO format
-  const now = new Date();
-  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
-  const weekStartDate = monday.toISOString().split("T")[0];
-
-  // Today's date in ISO format (server-computed to avoid hydration mismatch)
-  const todayDate = now.toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-pink-50">
@@ -50,7 +38,7 @@ export default async function DashboardPage() {
               <span className="text-xs font-medium text-pink-600">{displayName}</span>
             </div>
             <form action={signOut}>
-              <button type="submit" id="signout-btn" className="flex items-center gap-1.5 text-xs font-medium text-pink-500 hover:text-pink-700 transition-colors bg-pink-50 hover:bg-pink-100 rounded-lg px-3 py-1.5">
+              <button type="submit" className="flex items-center gap-1.5 text-xs font-medium text-pink-500 hover:text-pink-700 transition-colors bg-pink-50 hover:bg-pink-100 rounded-lg px-3 py-1.5">
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Sign Out</span>
               </button>
@@ -59,8 +47,7 @@ export default async function DashboardPage() {
         </div>
       </nav>
 
-      {/* ─── Interactive Dashboard ─── */}
-      <DashboardClient userId={user?.id} weekStartDate={weekStartDate} todayDate={todayDate} />
+      <AnalyticsClient userId={user?.id} />
     </div>
   );
 }

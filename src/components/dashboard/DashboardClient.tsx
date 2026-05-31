@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
+import { BarChart3 } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import WeeklyFocusPanel from "@/components/dashboard/WeeklyFocusPanel";
 import OverallProgressChart from "@/components/dashboard/OverallProgressChart";
@@ -8,10 +10,10 @@ import DonutChart from "@/components/dashboard/DonutChart";
 import TaskProgressOverview from "@/components/dashboard/TaskProgressOverview";
 import DayColumn from "@/components/dashboard/DayColumn";
 import HabitTracker from "@/components/dashboard/HabitTracker";
+import TodayPanel from "@/components/dashboard/TodayPanel";
 import {
   dailyData as initialDailyData,
   habitsData as initialHabitsData,
-  categoryProgress as initialCategoryProgress,
   weeklyFocus as initialFocus,
   weeklyReward as initialReward,
   weeklyAffirmation as initialAffirmation,
@@ -26,6 +28,7 @@ import {
   fetchWeeklyGoals,
   convertDisplayDateToISO,
   recalcDayStats,
+  isSupabaseSetupError,
 } from "@/lib/supabase/crud";
 
 // ════════════════════════════════════════════════════════
@@ -35,6 +38,7 @@ import {
 interface DashboardClientProps {
   userId?: string | null;     // null = preview mode (no Supabase sync)
   weekStartDate?: string;     // ISO "2025-12-29" for the Monday of this week
+  todayDate?: string;         // ISO "2026-05-31" for the current day (server-computed)
 }
 
 // ════════════════════════════════════════════════════════
@@ -112,14 +116,13 @@ function computeCategoryProgress(days: DayData[]): CategoryProgress[] {
 //  Main Component
 // ════════════════════════════════════════════════════════
 
-export default function DashboardClient({ userId, weekStartDate }: DashboardClientProps) {
+export default function DashboardClient({ userId, weekStartDate, todayDate }: DashboardClientProps) {
   // ─── Core State ───
   const [days, setDays] = useState<DayData[]>(initialDailyData);
   const [habits, setHabits] = useState<HabitData[]>(initialHabitsData);
   const [focus, setFocus] = useState(initialFocus);
   const [reward, setReward] = useState(initialReward);
   const [affirmation, setAffirmation] = useState(initialAffirmation);
-  const [categories, setCategories] = useState<CategoryProgress[]>(initialCategoryProgress);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const isPreview = !userId;
@@ -195,14 +198,10 @@ export default function DashboardClient({ userId, weekStartDate }: DashboardClie
     loadData();
   }, [userId, effectiveWeekStart, isPreview]);
 
-  // ─── Recompute category progress whenever days change ───
-  useEffect(() => {
-    setCategories(computeCategoryProgress(days));
-  }, [days]);
-
   // ─── Derived chart data (computed on every render from state) ───
   const barData = computeBarData(days);
   const { total, completed, percent } = computeOverallStats(days);
+  const categories: CategoryProgress[] = computeCategoryProgress(days);
 
   // ════════════════════════════════════════════════════════
   //  Task Toggle (Optimistic Update + Supabase Sync)
@@ -233,7 +232,18 @@ export default function DashboardClient({ userId, weekStartDate }: DashboardClie
         if (!isPreview) {
           const isoDate = convertDisplayDateToISO(day.date);
           toggleTaskCompletion(userId!, isoDate, task.name, task.completed).catch(
-            (err) => console.error("Task sync failed:", err)
+            (err) => {
+              if (isSupabaseSetupError(err)) {
+                console.warn("Task sync unavailable until Supabase schema is initialized.");
+                return;
+              }
+              // toggleTaskCompletion throws a plain Error with a descriptive
+              // message, so err.message carries the real Supabase reason.
+              console.error(
+                "Task sync failed:",
+                err instanceof Error ? err.message : String(err)
+              );
+            }
           );
         }
 
@@ -272,7 +282,13 @@ export default function DashboardClient({ userId, weekStartDate }: DashboardClie
             habit.name,
             dayIndex,
             newDays[dayIndex]
-          ).catch((err) => console.error("Habit sync failed:", err));
+          ).catch((err) => {
+            if (isSupabaseSetupError(err)) {
+              console.warn("Habit sync unavailable until Supabase schema is initialized.");
+              return;
+            }
+            console.error("Habit sync failed:", err);
+          });
         }
 
         return next;
@@ -295,7 +311,13 @@ export default function DashboardClient({ userId, weekStartDate }: DashboardClie
       // Async Supabase sync
       if (!isPreview) {
         updateWeeklyGoal(userId!, effectiveWeekStart, field, value).catch(
-          (err) => console.error("Goal sync failed:", err)
+          (err) => {
+            if (isSupabaseSetupError(err)) {
+              console.warn("Weekly goal sync unavailable until Supabase schema is initialized.");
+              return;
+            }
+            console.error("Goal sync failed:", err);
+          }
         );
       }
     },
@@ -325,6 +347,11 @@ export default function DashboardClient({ userId, weekStartDate }: DashboardClie
     <div className="max-w-[1440px] mx-auto px-3 lg:px-5 py-4 space-y-4">
       {/* ─── Title Banner ─── */}
       <DashboardHeader />
+
+      {/* ─── Daily Carry-Over: Today Panel (authenticated users only) ─── */}
+      {!isPreview && userId && todayDate && (
+        <TodayPanel userId={userId} todayDate={todayDate} />
+      )}
 
       {/* ─── Row 1: Focus Panel + Charts ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -368,6 +395,20 @@ export default function DashboardClient({ userId, weekStartDate }: DashboardClie
 
       {/* ─── Row 3: Habit Tracker ─── */}
       <HabitTracker habits={habits} onToggleHabit={handleToggleHabit} />
+
+      {/* ─── Analytics Link ─── */}
+      <div className="flex justify-center pb-2">
+        <Link
+          href={isPreview ? "/preview/analytics" : "/dashboard/analytics"}
+          className="group flex items-center gap-2 bg-white border border-pink-200 hover:border-pink-400 rounded-xl px-5 py-2.5 transition-all hover:shadow-md"
+        >
+          <BarChart3 className="w-4 h-4 text-pink-400 group-hover:text-pink-600 transition-colors" />
+          <span className="text-sm font-semibold text-pink-600 group-hover:text-pink-700 transition-colors">
+            View Yearly Analytics
+          </span>
+          <span className="text-pink-300 group-hover:text-pink-500 transition-colors">→</span>
+        </Link>
+      </div>
     </div>
   );
 }

@@ -23,6 +23,13 @@ export interface WeeklyGoal {
   updated_at: string;
 }
 
+/**
+ * Task classification:
+ *  - 'recurring' = daily habits that do NOT carry over to the next day
+ *  - 'deadline'  = essential tasks that DO carry over if missed (until done)
+ */
+export type TaskType = "recurring" | "deadline";
+
 export interface Task {
   id: string;
   user_id: string;
@@ -30,8 +37,29 @@ export interface Task {
   category: string;
   task_name: string;
   is_completed: boolean;
+  task_type: TaskType;       // NEW: 'recurring' (default) | 'deadline'
+  due_date: string | null;   // NEW: nullable ISO date for deadline tasks
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskInsert {
+  user_id: string;
+  date: string; // ISO date string
+  task_name: string;
+  is_completed?: boolean;
+  category?: string;
+  task_type?: TaskType;       // optional (DB defaults to 'recurring')
+  due_date?: string | null;   // optional, nullable
+}
+
+export interface TaskUpdate {
+  date?: string; // ISO date string
+  category?: string;
+  task_name?: string;
+  is_completed?: boolean;
+  task_type?: TaskType;
+  due_date?: string | null;
 }
 
 export interface Habit {
@@ -79,8 +107,8 @@ export interface Database {
       };
       tasks: {
         Row: Task;
-        Insert: Omit<Task, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Task, "id" | "user_id" | "created_at" | "updated_at">>;
+        Insert: TaskInsert;
+        Update: TaskUpdate;
       };
       habits: {
         Row: Habit;
